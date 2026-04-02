@@ -451,6 +451,80 @@ async def create_checkout(request: Request):
     }
 
 # ============================================================
+# PAYSTACK PAYMENT ROUTES
+# ============================================================
+
+@app.get("/api/v1/paystack/config")
+async def paystack_config():
+    paystack_key = os.getenv("PAYSTACK_SECRET_KEY", "")
+    return {
+        "public_key": os.getenv("PAYSTACK_PUBLIC_KEY", ""),
+        "currency": "ZAR",
+        "configured": bool(paystack_key),
+        "plans": {
+            "pro": {"name": "Pro Autopilot", "amount": 499, "display": "R499/month"},
+            "enterprise": {"name": "Enterprise", "amount": 3299, "display": "R3,299/month"},
+        }
+    }
+
+@app.post("/api/v1/paystack/initialize")
+async def paystack_initialize(request: Request):
+    body = await request.json()
+    email = body.get("email", "")
+    plan = body.get("plan", "pro")
+    
+    paystack_key = os.getenv("PAYSTACK_SECRET_KEY", "")
+    
+    amounts = {"pro": 49900, "enterprise": 329900}
+    
+    if paystack_key:
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    "https://api.paystack.co/transaction/initialize",
+                    headers={
+                        "Authorization": f"Bearer {paystack_key}",
+                        "Content-Type": "application/json"
+                    },
+                    json={
+                        "email": email,
+                        "amount": amounts.get(plan, 49900),
+                        "currency": "ZAR",
+                        "callback_url": "https://starktrade-ai.vercel.app/dashboard?payment=success",
+                        "channels": ["card", "bank", "ussd", "mobile_money", "bank_transfer"]
+                    }
+                )
+                return response.json()
+        except Exception as e:
+            return {"status": False, "message": str(e)}
+    
+    return {
+        "status": True,
+        "message": "Demo mode",
+        "data": {
+            "authorization_url": f"https://checkout.paystack.com/demo/{plan}",
+            "reference": f"demo_{datetime.utcnow().timestamp()}"
+        }
+    }
+
+@app.get("/api/v1/paystack/verify/{reference}")
+async def paystack_verify(reference: str):
+    paystack_key = os.getenv("PAYSTACK_SECRET_KEY", "")
+    
+    if paystack_key:
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"https://api.paystack.co/transaction/verify/{reference}",
+                    headers={"Authorization": f"Bearer {paystack_key}"}
+                )
+                return response.json()
+        except Exception as e:
+            return {"status": False, "message": str(e)}
+    
+    return {"status": True, "data": {"status": "success", "reference": reference}}
+
+# ============================================================
 # BROKER/ALPACA ROUTES
 # ============================================================
 
