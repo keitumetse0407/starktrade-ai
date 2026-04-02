@@ -4,113 +4,166 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
-:root {
-  --navy: #0A0E27;
-  --navy-50: #1A1F3D;
-  --electric: #00D4FF;
+/* ============================================================
+   DARK THEME (Default)
+   ============================================================ */
+:root, .dark {
+  --bg-primary: #0A0E27;
+  --bg-secondary: #1A1F3D;
+  --bg-card: rgba(26, 31, 61, 0.6);
+  --bg-card-hover: rgba(26, 31, 61, 0.8);
+  --bg-input: rgba(10, 14, 39, 0.5);
+  --text-primary: #E6F1FF;
+  --text-secondary: #8892B0;
+  --text-muted: #5A6380;
+  --border-primary: rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(0, 212, 255, 0.25);
+  --accent: #00D4FF;
+  --accent-glow: rgba(0, 212, 255, 0.3);
   --profit: #00FF88;
+  --profit-bg: rgba(0, 255, 136, 0.1);
   --loss: #FF3366;
+  --loss-bg: rgba(255, 51, 102, 0.1);
   --gold: #FFD700;
-  --muted: #8892B0;
+  --gold-bg: rgba(255, 215, 0, 0.1);
+  --shadow-glow: 0 0 40px rgba(0, 212, 255, 0.15);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* ============================================================
+   LIGHT THEME
+   ============================================================ */
+.light {
+  --bg-primary: #F8FAFC;
+  --bg-secondary: #FFFFFF;
+  --bg-card: rgba(255, 255, 255, 0.8);
+  --bg-card-hover: rgba(255, 255, 255, 0.95);
+  --bg-input: rgba(241, 245, 249, 0.8);
+  --text-primary: #0F172A;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
+  --border-primary: rgba(0, 0, 0, 0.08);
+  --border-hover: rgba(0, 212, 255, 0.4);
+  --accent: #0EA5E9;
+  --accent-glow: rgba(14, 165, 233, 0.2);
+  --profit: #10B981;
+  --profit-bg: rgba(16, 185, 129, 0.1);
+  --loss: #EF4444;
+  --loss-bg: rgba(239, 68, 68, 0.1);
+  --gold: #F59E0B;
+  --gold-bg: rgba(245, 158, 11, 0.1);
+  --shadow-glow: 0 0 40px rgba(14, 165, 233, 0.1);
+  --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 212, 255, 0.3) rgba(10, 14, 39, 0.5);
+  scrollbar-color: var(--accent-glow) transparent;
 }
 
 body {
-  background-color: var(--navy);
-  color: #E6F1FF;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   font-family: 'Inter', system-ui, sans-serif;
   overflow-x: hidden;
 }
 
-/* ================================
-   GLASSMORPHISM
-   ================================ */
+/* ============================================================
+   GOOGLE ANTIGRAVITY INSPIRED - FLOATING GLASS CARDS
+   ============================================================ */
 .glass {
-  background: rgba(26, 31, 61, 0.6);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(0, 212, 255, 0.08);
-  border-radius: 16px;
+  background: var(--bg-card);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--border-primary);
+  border-radius: 20px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.glass-hover:hover {
-  border-color: rgba(0, 212, 255, 0.25);
-  box-shadow: 0 0 30px rgba(0, 212, 255, 0.1);
-  transition: all 0.3s ease;
-}
-
-.glass-dark {
-  background: rgba(10, 14, 39, 0.8);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.glass-card {
-  background: linear-gradient(135deg, rgba(26, 31, 61, 0.8), rgba(10, 14, 39, 0.6));
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(0, 212, 255, 0.1);
-  border-radius: 16px;
-  transition: all 0.3s ease;
-}
-
-.glass-card:hover {
-  border-color: rgba(0, 212, 255, 0.3);
-  box-shadow: 0 8px 40px rgba(0, 212, 255, 0.12);
+.glass:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-glow);
   transform: translateY(-2px);
 }
 
-/* ================================
+.glass-card {
+  background: linear-gradient(135deg, var(--bg-card), var(--bg-card-hover));
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--border-primary);
+  border-radius: 20px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-card);
+}
+
+.glass-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-glow), var(--shadow-card);
+  transform: translateY(-4px);
+}
+
+/* Floating card effect (Google AntiGravity inspired) */
+.floating-card {
+  animation: float 6s ease-in-out infinite;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+.floating-card:nth-child(2) { animation-delay: -1s; }
+.floating-card:nth-child(3) { animation-delay: -2s; }
+.floating-card:nth-child(4) { animation-delay: -3s; }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotateX(0deg); }
+  50% { transform: translateY(-10px) rotateX(2deg); }
+}
+
+/* Depth layers */
+.depth-1 { z-index: 10; transform: translateZ(0px); }
+.depth-2 { z-index: 20; transform: translateZ(20px); }
+.depth-3 { z-index: 30; transform: translateZ(40px); }
+
+/* Gradient orbs (AntiGravity ambient lighting) */
+.gradient-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.3;
+  pointer-events: none;
+  animation: pulse-orb 8s ease-in-out infinite;
+}
+
+@keyframes pulse-orb {
+  0%, 100% { transform: scale(1); opacity: 0.3; }
+  50% { transform: scale(1.2); opacity: 0.5; }
+}
+
+/* ============================================================
    BACKGROUNDS
-   ================================ */
+   ============================================================ */
 .gradient-bg {
-  background: linear-gradient(135deg, #0A0E27 0%, #1A1F3D 50%, #0A0E27 100%);
-  background-size: 400% 400%;
-  animation: gradientShift 15s ease infinite;
+  background: var(--bg-primary);
+  position: relative;
 }
 
 .gradient-mesh {
   background: 
-    radial-gradient(at 20% 20%, rgba(0, 212, 255, 0.08) 0%, transparent 50%),
-    radial-gradient(at 80% 80%, rgba(0, 255, 136, 0.05) 0%, transparent 50%),
-    radial-gradient(at 50% 50%, rgba(255, 51, 102, 0.03) 0%, transparent 50%),
-    linear-gradient(135deg, #0A0E27 0%, #1A1F3D 50%, #0A0E27 100%);
+    radial-gradient(at 20% 20%, var(--accent-glow) 0%, transparent 50%),
+    radial-gradient(at 80% 80%, var(--profit-bg) 0%, transparent 50%),
+    radial-gradient(at 50% 50%, var(--loss-bg) 0%, transparent 50%),
+    var(--bg-primary);
 }
 
 .grid-bg {
   background-image: 
-    linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
+    linear-gradient(var(--border-primary) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-primary) 1px, transparent 1px);
+  background-size: 60px 60px;
 }
 
-/* ================================
-   HERO EFFECTS
-   ================================ */
-.hero-glow {
-  position: relative;
-}
-
-.hero-glow::before {
-  content: '';
-  position: absolute;
-  top: -100px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 600px;
-  height: 600px;
-  background: radial-gradient(circle, rgba(0, 212, 255, 0.15) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* ================================
+/* ============================================================
    STATUS INDICATORS
-   ================================ */
+   ============================================================ */
 .status-dot {
   width: 8px;
   height: 8px;
@@ -121,18 +174,18 @@ body {
 .status-dot::after {
   content: '';
   position: absolute;
-  inset: -3px;
+  inset: -4px;
   border-radius: 50%;
   animation: pulse-ring 2s ease-out infinite;
 }
 
-.status-dot.active { background-color: var(--profit); }
+.status-dot.active { background: var(--profit); }
 .status-dot.active::after { border: 1px solid var(--profit); }
-.status-dot.busy { background-color: var(--electric); }
-.status-dot.busy::after { border: 1px solid var(--electric); }
-.status-dot.idle { background-color: var(--muted); }
+.status-dot.busy { background: var(--accent); }
+.status-dot.busy::after { border: 1px solid var(--accent); }
+.status-dot.idle { background: var(--text-muted); }
 .status-dot.idle::after { display: none; }
-.status-dot.error { background-color: var(--loss); }
+.status-dot.error { background: var(--loss); }
 .status-dot.error::after { border: 1px solid var(--loss); }
 
 @keyframes pulse-ring {
@@ -140,105 +193,88 @@ body {
   100% { opacity: 0; transform: scale(2); }
 }
 
-/* ================================
+/* ============================================================
    GLOW TEXT
-   ================================ */
-.glow-electric {
-  text-shadow: 0 0 10px rgba(0, 212, 255, 0.5), 0 0 40px rgba(0, 212, 255, 0.2);
+   ============================================================ */
+.glow-accent {
+  text-shadow: 0 0 10px var(--accent-glow), 0 0 40px var(--accent-glow);
 }
 
 .glow-profit {
-  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5), 0 0 40px rgba(0, 255, 136, 0.2);
+  text-shadow: 0 0 10px var(--profit-bg), 0 0 40px var(--profit-bg);
 }
 
-.glow-loss {
-  text-shadow: 0 0 10px rgba(255, 51, 102, 0.5);
-}
-
-.glow-gold {
-  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5), 0 0 40px rgba(255, 215, 0, 0.2);
-}
-
-/* ================================
+/* ============================================================
    BUTTONS
-   ================================ */
+   ============================================================ */
 .btn-primary {
-  @apply px-6 py-3 bg-electric text-navy font-semibold rounded-xl 
-         hover:bg-electric/90 transition-all duration-200 hover:shadow-lg;
-  box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+  padding: 0.75rem 1.5rem;
+  background: var(--accent);
+  color: var(--bg-primary);
+  font-weight: 600;
+  border-radius: 14px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 20px var(--accent-glow);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px var(--accent-glow), 0 8px 25px rgba(0, 0, 0, 0.2);
 }
 
 .btn-outline {
-  @apply px-6 py-3 border border-white/10 text-white font-medium rounded-xl 
-         hover:border-electric/30 hover:bg-electric/5 transition-all duration-200;
+  padding: 0.75rem 1.5rem;
+  border: 1px solid var(--border-primary);
+  color: var(--text-primary);
+  font-weight: 500;
+  border-radius: 14px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.btn-profit {
-  @apply px-6 py-3 bg-profit text-navy font-semibold rounded-xl 
-         hover:bg-profit/90 transition-all duration-200;
-  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
+.btn-outline:hover {
+  border-color: var(--border-hover);
+  background: var(--accent-glow);
+  transform: translateY(-2px);
 }
 
-.btn-ghost {
-  @apply px-4 py-2 text-muted hover:text-white hover:bg-white/5 
-         rounded-lg transition-all duration-200;
-}
-
-/* ================================
+/* ============================================================
    SCROLLBAR
-   ================================ */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+   ============================================================ */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { 
+  background: var(--accent-glow); 
+  border-radius: 3px; 
 }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
 
-::-webkit-scrollbar-track {
-  background: rgba(10, 14, 39, 0.5);
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(0, 212, 255, 0.3);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 212, 255, 0.5);
-}
-
-/* ================================
-   COUNTER / TABULAR NUMBERS
-   ================================ */
+/* ============================================================
+   COUNTER
+   ============================================================ */
 .counter-value {
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum';
 }
 
-/* ================================
+/* ============================================================
    GRADIENT TEXT
-   ================================ */
-.text-gradient-electric {
-  background: linear-gradient(135deg, #00D4FF, #00FF88);
+   ============================================================ */
+.text-gradient-accent {
+  background: linear-gradient(135deg, var(--accent), var(--profit));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-.text-gradient-gold {
-  background: linear-gradient(135deg, #FFD700, #FFA500);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* ================================
+/* ============================================================
    SHIMMER LOADING
-   ================================ */
+   ============================================================ */
 .shimmer {
   background: linear-gradient(
     90deg,
-    rgba(26, 31, 61, 0.6) 0%,
-    rgba(0, 212, 255, 0.1) 50%,
-    rgba(26, 31, 61, 0.6) 100%
+    var(--bg-card) 0%,
+    var(--accent-glow) 50%,
+    var(--bg-card) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 2s linear infinite;
@@ -249,142 +285,119 @@ body {
   100% { background-position: 200% 0; }
 }
 
-/* ================================
-   ANIMATIONS
-   ================================ */
-@keyframes gradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-@keyframes float-particle {
-  0%, 100% { 
-    transform: translateY(0) translateX(0) rotate(0deg); 
-    opacity: 0;
-  }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { 
-    transform: translateY(-100vh) translateX(50px) rotate(360deg); 
-    opacity: 0;
-  }
-}
-
-/* ================================
-   CHART CONTAINERS
-   ================================ */
-.chart-container {
-  @apply rounded-xl overflow-hidden;
-  background: rgba(10, 14, 39, 0.4);
-  border: 1px solid rgba(0, 212, 255, 0.08);
-}
-
-/* ================================
+/* ============================================================
    BADGE
-   ================================ */
+   ============================================================ */
 .badge {
   display: inline-flex;
   align-items: center;
-  padding: 0.125rem 0.625rem;
+  padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 500;
 }
 
-.badge-electric {
-  background: rgba(0, 212, 255, 0.1);
-  color: #00D4FF;
-  border: 1px solid rgba(0, 212, 255, 0.2);
+.badge-accent {
+  background: var(--accent-glow);
+  color: var(--accent);
+  border: 1px solid var(--accent-glow);
 }
 
 .badge-profit {
-  background: rgba(0, 255, 136, 0.1);
-  color: #00FF88;
-  border: 1px solid rgba(0, 255, 136, 0.2);
+  background: var(--profit-bg);
+  color: var(--profit);
+  border: 1px solid var(--profit-bg);
 }
 
 .badge-loss {
-  background: rgba(255, 51, 102, 0.1);
-  color: #FF3366;
-  border: 1px solid rgba(255, 51, 102, 0.2);
+  background: var(--loss-bg);
+  color: var(--loss);
+  border: 1px solid var(--loss-bg);
 }
 
 .badge-gold {
-  background: rgba(255, 215, 0, 0.1);
-  color: #FFD700;
-  border: 1px solid rgba(255, 215, 0, 0.2);
+  background: var(--gold-bg);
+  color: var(--gold);
+  border: 1px solid var(--gold-bg);
 }
 
-/* ================================
-   INPUT STYLES
-   ================================ */
+/* ============================================================
+   INPUT
+   ============================================================ */
 .input-stark {
   width: 100%;
-  background: rgba(10, 14, 39, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.5rem;
-  padding: 0.75rem 1rem;
+  background: var(--bg-input);
+  border: 1px solid var(--border-primary);
+  border-radius: 14px;
+  padding: 0.875rem 1rem;
   font-size: 0.875rem;
-  transition: all 0.2s;
+  color: var(--text-primary);
+  transition: all 0.3s;
 }
 
 .input-stark:focus {
-  border-color: rgba(0, 212, 255, 0.5);
+  border-color: var(--accent);
   outline: none;
-  box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.2);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 .input-stark::placeholder {
-  color: rgba(136, 146, 176, 0.5);
+  color: var(--text-muted);
 }
 
-/* ================================
-   TABLE STYLES
-   ================================ */
-.table-stark {
-  width: 100%;
+/* ============================================================
+   MOBILE HAMBURGER MENU
+   ============================================================ */
+.hamburger-line {
+  width: 24px;
+  height: 2px;
+  background: var(--text-primary);
+  transition: all 0.3s;
+  border-radius: 1px;
 }
 
-.table-stark thead tr {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+.hamburger-active .hamburger-line:nth-child(1) {
+  transform: rotate(45deg) translate(5px, 5px);
 }
 
-.table-stark th {
-  text-align: left;
-  font-size: 0.75rem;
-  color: #8892B0;
-  padding: 1rem;
-  font-weight: 500;
+.hamburger-active .hamburger-line:nth-child(2) {
+  opacity: 0;
 }
 
-.table-stark tbody tr {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  transition: background 0.2s;
+.hamburger-active .hamburger-line:nth-child(3) {
+  transform: rotate(-45deg) translate(5px, -5px);
 }
 
-.table-stark tbody tr:hover {
-  background: rgba(255, 255, 255, 0.05);
+/* ============================================================
+   PREDICTION MARKET BARS (Kalshi inspired)
+   ============================================================ */
+.probability-bar {
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--loss-bg);
 }
 
-.table-stark td {
-  padding: 1rem;
-  font-size: 0.875rem;
+.probability-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--profit), var(--accent));
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ================================
-   RESPONSIVE
-   ================================ */
-@media (max-width: 768px) {
-  .glass {
-    border-radius: 12px;
-  }
-}
-
-/* ================================
+/* ============================================================
    SELECTION
-   ================================ */
+   ============================================================ */
 ::selection {
-  background: rgba(0, 212, 255, 0.3);
-  color: #E6F1FF;
+  background: var(--accent-glow);
+  color: var(--text-primary);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 768px) {
+  .glass, .glass-card {
+    border-radius: 16px;
+  }
 }

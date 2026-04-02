@@ -1,20 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Activity, BarChart3, Brain, Shield, Settings, TrendingUp, Bell,
-  DollarSign, Target, Zap, RefreshCw, LogOut, ChevronRight, Plus,
-  Play, Pause, Download, Copy, ExternalLink, AlertCircle, CheckCircle,
-  Loader2, Wifi, WifiOff
+  DollarSign, Target, Zap, RefreshCw, LogOut, ChevronRight, Menu, X,
+  Sun, Moon, Play, Pause, Download, AlertCircle, Wifi, WifiOff,
+  ArrowUpRight, ArrowDownRight, Clock, Sparkles, Flame, Layers
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell
-} from 'recharts';
 import { apiFetch, clearAuthToken } from '@/lib/api';
+import { useTheme } from '@/lib/theme';
 import { ReferralDashboard } from '@/components/ReferralSystem';
 
 // ============================================================
@@ -60,32 +57,13 @@ interface AgentStatus {
   role: string;
 }
 
-// ============================================================
-// SKELETON LOADER
-// ============================================================
-function DashboardSkeleton() {
-  return (
-    <div className="min-h-screen flex flex-col md:flex-row">
-      <aside className="w-full md:w-64 glass border-r border-white/5 p-4">
-        <div className="shimmer h-8 w-32 rounded mb-8" />
-        <div className="space-y-3">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="shimmer h-10 rounded-lg" />
-          ))}
-        </div>
-      </aside>
-      <main className="flex-1 p-6">
-        <div className="shimmer h-8 w-48 rounded mb-2" />
-        <div className="shimmer h-4 w-64 rounded mb-8" />
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="shimmer h-24 rounded-xl" />
-          ))}
-        </div>
-        <div className="shimmer h-64 rounded-xl" />
-      </main>
-    </div>
-  );
+interface Prediction {
+  id: string;
+  title: string;
+  category: string;
+  yes_price: number;
+  volume: number;
+  status: string;
 }
 
 // ============================================================
@@ -93,19 +71,20 @@ function DashboardSkeleton() {
 // ============================================================
 export default function DashboardPage() {
   const router = useRouter();
+  const { theme, toggleTheme, isDark } = useTheme();
   const [activeTab, setActiveTab] = useState('command');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [agents, setAgents] = useState<AgentStatus[]>([]);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isConnected, setIsConnected] = useState(true);
   const [isPaperMode, setIsPaperMode] = useState(true);
   const [autoTrading, setAutoTrading] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
 
-  // Check auth and load data
   useEffect(() => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) {
@@ -119,44 +98,33 @@ export default function DashboardPage() {
     setLoading(true);
     setError('');
     try {
-      // First check if user is authenticated
       const userRes = await apiFetch('/api/v1/auth/me');
-      
       if (!userRes.ok) {
-        // Token expired or invalid
         clearAuthToken();
         router.push('/onboarding');
         return;
       }
-
       const userData = await userRes.json();
       setUser(userData);
       setAutoTrading(userData.auto_trading_enabled);
       setIsConnected(true);
 
-      // Load other data in parallel (non-critical)
-      const [portfolioRes, tradesRes, agentsRes] = await Promise.all([
+      const [portfolioRes, tradesRes, agentsRes, predictionsRes] = await Promise.all([
         apiFetch('/api/v1/portfolio/').catch(() => null),
         apiFetch('/api/v1/trades/').catch(() => null),
         apiFetch('/api/v1/agents/').catch(() => null),
+        apiFetch('/api/v1/predictions/markets').catch(() => null),
       ]);
 
       if (portfolioRes?.ok) {
         const portfolios = await portfolioRes.json();
         if (portfolios.length > 0) setPortfolio(portfolios[0]);
       }
-
-      if (tradesRes?.ok) {
-        setTrades(await tradesRes.json());
-      }
-
-      if (agentsRes?.ok) {
-        setAgents(await agentsRes.json());
-      }
-
-      setLastRefresh(new Date());
+      if (tradesRes?.ok) setTrades(await tradesRes.json());
+      if (agentsRes?.ok) setAgents(await agentsRes.json());
+      if (predictionsRes?.ok) setPredictions(await predictionsRes.json());
     } catch (err) {
-      setError('Connection error. Please check your internet.');
+      setError('Connection error');
       setIsConnected(false);
     }
     setLoading(false);
@@ -171,217 +139,6 @@ export default function DashboardPage() {
     router.push('/onboarding');
   };
 
-  if (loading) {
-    return <DashboardSkeleton />;
-  }
-
-  return (
-    <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 glass border-r border-white/5 p-4 flex flex-col md:min-h-screen">
-        <Link href="/" className="flex items-center gap-2.5 mb-8 group">
-          <div className="relative">
-            <Zap className="w-7 h-7 text-electric group-hover:scale-110 transition-transform" />
-          </div>
-          <div>
-            <span className="font-bold tracking-tight">StarkTrade AI</span>
-            <span className="block text-[10px] text-muted">by ELEV8 DIGITAL</span>
-          </div>
-        </Link>
-
-        {/* Connection Status */}
-        <div className={`mb-4 p-2 rounded-lg text-xs flex items-center gap-2 ${
-          isConnected ? 'bg-profit/5 text-profit' : 'bg-loss/5 text-loss'
-        }`}>
-          {isConnected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
-          {isConnected ? 'Connected to backend' : 'Disconnected'}
-        </div>
-
-        {/* Paper/Live Mode Toggle */}
-        <div className="mb-6 p-3 rounded-xl bg-navy/50 border border-white/5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-muted">Trading Mode</span>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-              isPaperMode ? 'bg-gold/10 text-gold border border-gold/20' : 'bg-profit/10 text-profit border border-profit/20'
-            }`}>
-              {isPaperMode ? 'PAPER' : 'LIVE'}
-            </span>
-          </div>
-          <button
-            onClick={() => setIsPaperMode(!isPaperMode)}
-            className={`w-full py-2.5 rounded-lg text-sm font-medium transition-all ${
-              isPaperMode 
-                ? 'bg-gold/10 text-gold border border-gold/20 hover:bg-gold/20' 
-                : 'bg-profit/10 text-profit border border-profit/20 hover:bg-profit/20'
-            }`}
-          >
-            {isPaperMode ? 'Switch to Live Trading' : 'Switch to Paper'}
-          </button>
-          {!isPaperMode && (
-            <p className="text-[10px] text-loss mt-2 flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" /> Real money at risk
-            </p>
-          )}
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 space-y-1">
-          {[
-            { id: 'command', label: 'Command Center', icon: Activity },
-            { id: 'autopilot', label: 'Autopilot', icon: Zap },
-            { id: 'agents', label: 'Agents Council', icon: Brain },
-            { id: 'trades', label: 'Trade History', icon: TrendingUp },
-            { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-            { id: 'settings', label: 'Settings', icon: Settings },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-electric/10 text-electric border border-electric/20'
-                    : 'text-muted hover:text-white hover:bg-white/5'
-                }`}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="flex-1 text-left">{tab.label}</span>
-                {activeTab === tab.id && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-electric" />
-                )}
-              </button>
-            );
-          })}
-
-          <div className="border-t border-white/5 my-2 pt-2">
-            {user?.role === 'admin' && (
-              <Link
-                href="/admin"
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-loss hover:bg-loss/5 transition-all"
-              >
-                <Shield className="w-4 h-4" />
-                Admin Panel
-              </Link>
-            )}
-          </div>
-        </nav>
-
-        {/* User Section */}
-        <div className="mt-auto pt-4 border-t border-white/5">
-          <div className="flex items-center gap-3 px-2 py-2">
-            <div className="w-9 h-9 rounded-full bg-electric/20 flex items-center justify-center text-electric text-sm font-bold">
-              {user?.full_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user?.full_name || 'Trader'}</p>
-              <p className="text-[10px] text-muted">{user?.email}</p>
-            </div>
-            <button onClick={handleLogout} className="p-2 text-muted hover:text-white rounded-lg hover:bg-white/5 transition-all" title="Logout">
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 p-4 md:p-6 overflow-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              {activeTab === 'command' && 'Command Center'}
-              {activeTab === 'autopilot' && 'Autopilot Controls'}
-              {activeTab === 'agents' && 'Agents Council'}
-              {activeTab === 'trades' && 'Trade History'}
-              {activeTab === 'analytics' && 'Analytics'}
-              {activeTab === 'settings' && 'Settings'}
-            </h1>
-            <p className="text-sm text-muted mt-0.5">
-              Welcome back, <span className="text-white">{user?.full_name || 'Trader'}</span>
-              <span className="mx-2">·</span>
-              <span className={isPaperMode ? 'text-gold' : 'text-profit'}>
-                {isPaperMode ? 'Paper Trading' : 'Live Trading'}
-              </span>
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted hidden md:block">
-              Updated {lastRefresh.toLocaleTimeString()}
-            </span>
-            <button 
-              onClick={loadData} 
-              className="p-2.5 rounded-lg glass text-muted hover:text-white transition-colors"
-              title="Refresh data"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-
-        {error && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-4 p-4 rounded-xl bg-loss/10 border border-loss/20 text-loss text-sm flex items-center gap-3"
-          >
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="font-medium">{error}</p>
-              <p className="text-xs opacity-70 mt-1">Click refresh to try again.</p>
-            </div>
-            <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-loss/20 text-loss text-xs font-medium hover:bg-loss/30 transition-colors">
-              Retry
-            </button>
-          </motion.div>
-        )}
-
-        {/* Tab Content */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.15 }}
-          >
-            {activeTab === 'command' && (
-              <CommandCenterTab
-                portfolio={portfolio}
-                trades={trades}
-                agents={agents}
-                autoTrading={autoTrading}
-                onToggleAutoTrading={toggleAutoTrading}
-                isPaperMode={isPaperMode}
-                onTabChange={setActiveTab}
-              />
-            )}
-            {activeTab === 'autopilot' && (
-              <AutopilotTab autoTrading={autoTrading} onToggle={toggleAutoTrading} />
-            )}
-            {activeTab === 'agents' && <AgentsTab agents={agents} />}
-            {activeTab === 'trades' && <TradesTab trades={trades} />}
-            {activeTab === 'analytics' && <AnalyticsTab portfolio={portfolio} trades={trades} />}
-            {activeTab === 'settings' && <SettingsTab user={user} />}
-          </motion.div>
-        </AnimatePresence>
-      </main>
-    </div>
-  );
-}
-
-// ============================================================
-// COMMAND CENTER TAB
-// ============================================================
-function CommandCenterTab({ portfolio, trades, agents, autoTrading, onToggleAutoTrading, isPaperMode, onTabChange }: {
-  portfolio: Portfolio | null;
-  trades: Trade[];
-  agents: AgentStatus[];
-  autoTrading: boolean;
-  onToggleAutoTrading: () => void;
-  isPaperMode: boolean;
-  onTabChange: (tab: string) => void;
-}) {
   const totalValue = portfolio?.total_value || 100000;
   const dailyPnl = portfolio?.daily_pnl || 0;
   const totalPnl = portfolio?.total_pnl || 0;
@@ -390,213 +147,563 @@ function CommandCenterTab({ portfolio, trades, agents, autoTrading, onToggleAuto
     ? ((trades.filter(t => (t.pnl || 0) > 0).length / trades.length) * 100).toFixed(1)
     : '—';
 
-  return (
-    <div className="space-y-6">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0 }} className="glass-card p-5">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-electric/10 flex items-center justify-center">
-              <DollarSign className="w-4 h-4 text-electric" />
-            </div>
-            <span className="text-xs text-muted">Portfolio</span>
-          </div>
-          <p className="text-xl font-bold font-mono counter-value">${totalValue.toLocaleString()}</p>
-          <p className={`text-xs font-mono mt-1 ${dailyPnl >= 0 ? 'text-profit' : 'text-loss'}`}>
-            {dailyPnl >= 0 ? '+' : ''}{dailyPnl.toFixed(2)} today
-          </p>
-        </motion.div>
+  const NAV_ITEMS = [
+    { id: 'command', label: 'Command Center', icon: Activity },
+    { id: 'autopilot', label: 'Autopilot', icon: Zap },
+    { id: 'agents', label: 'Agents', icon: Brain },
+    { id: 'predictions', label: 'Predictions', icon: Flame },
+    { id: 'trades', label: 'History', icon: TrendingUp },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { id: 'settings', label: 'Settings', icon: Settings },
+  ];
 
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-card p-5">
-          <div className="flex items-center gap-2 mb-2">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${totalPnl >= 0 ? 'bg-profit/10' : 'bg-loss/10'}`}>
-              <TrendingUp className={`w-4 h-4 ${totalPnl >= 0 ? 'text-profit' : 'text-loss'}`} />
-            </div>
-            <span className="text-xs text-muted">Total P&L</span>
+  if (loading) {
+    return (
+      <div className={`min-h-screen gradient-bg grid-bg flex items-center justify-center`}>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
+            <Zap className="w-8 h-8 text-accent animate-pulse" />
           </div>
-          <p className={`text-xl font-bold font-mono ${totalPnl >= 0 ? 'text-profit' : 'text-loss'}`}>
-            {totalPnl >= 0 ? '+' : ''}${totalPnl.toFixed(2)}
-          </p>
-          <p className="text-xs text-muted mt-1">{((totalPnl / 100000) * 100).toFixed(2)}% return</p>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass-card p-5">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-gold/10 flex items-center justify-center">
-              <Target className="w-4 h-4 text-gold" />
-            </div>
-            <span className="text-xs text-muted">Win Rate</span>
-          </div>
-          <p className="text-xl font-bold font-mono">{winRate}%</p>
-          <p className="text-xs text-muted mt-1">{trades.length} trades</p>
-        </motion.div>
-
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="glass-card p-5">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-8 h-8 rounded-lg bg-electric/10 flex items-center justify-center">
-              <Activity className="w-4 h-4 text-electric" />
-            </div>
-            <span className="text-xs text-muted">Cash Available</span>
-          </div>
-          <p className="text-xl font-bold font-mono">${cashBalance.toLocaleString()}</p>
-          <p className="text-xs text-muted mt-1">{((cashBalance / totalValue) * 100).toFixed(0)}% of portfolio</p>
+          <p className="text-secondary">Initializing systems...</p>
         </motion.div>
       </div>
+    );
+  }
 
-      {/* Autopilot Status Card */}
-      <motion.div 
-        initial={{ opacity: 0, y: 10 }} 
-        animate={{ opacity: 1, y: 0 }} 
-        transition={{ delay: 0.2 }}
-        className={`glass-card p-6 border transition-all ${autoTrading ? 'border-profit/30 shadow-glow-profit' : 'border-white/10'}`}
-      >
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
-              autoTrading ? 'bg-profit/10 animate-pulse' : 'bg-white/5'
-            }`}>
-              <Zap className={`w-7 h-7 ${autoTrading ? 'text-profit' : 'text-muted'}`} />
-            </div>
-            <div>
-              <h3 className="font-semibold text-lg">Autopilot {autoTrading ? 'ACTIVE' : 'PAUSED'}</h3>
-              <p className="text-sm text-muted">
-                {autoTrading 
-                  ? `${agents.filter(a => a.status === 'active').length} agents trading on your behalf`
-                  : 'Enable to start autonomous trading'
-                }
-              </p>
-            </div>
+  return (
+    <div className={`min-h-screen gradient-bg ${sidebarOpen ? 'overflow-hidden md:overflow-auto' : ''}`}>
+      {/* Gradient Orbs (AntiGravity ambient lighting) */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="gradient-orb w-96 h-96 bg-accent/20 -top-48 -left-48" />
+        <div className="gradient-orb w-96 h-96 bg-profit/10 -bottom-48 -right-48" style={{ animationDelay: '-4s' }} />
+      </div>
+
+      {/* Mobile Header */}
+      <header className="md:hidden fixed top-0 left-0 right-0 z-50 glass-dark border-b border-border-primary px-4 py-3 flex items-center justify-between">
+        <button
+          onClick={() => setSidebarOpen(!sidebarOpen)}
+          className={`p-2 rounded-xl hover:bg-white/5 transition-all ${sidebarOpen ? 'hamburger-active' : ''}`}
+        >
+          <div className="flex flex-col gap-1.5">
+            <span className="hamburger-line" />
+            <span className="hamburger-line" />
+            <span className="hamburger-line" />
           </div>
-          <button
-            onClick={onToggleAutoTrading}
-            className={`px-8 py-3.5 rounded-xl font-semibold transition-all flex items-center gap-2 ${
-              autoTrading 
-                ? 'bg-loss/10 text-loss border border-loss/20 hover:bg-loss/20' 
-                : 'bg-profit text-navy hover:bg-profit/90 shadow-glow-profit'
-            }`}
-          >
-            {autoTrading ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-            {autoTrading ? 'Pause Autopilot' : 'Activate Autopilot'}
+        </button>
+        
+        <div className="flex items-center gap-2">
+          <Zap className="w-5 h-5 text-accent" />
+          <span className="font-bold text-sm">StarkTrade</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button onClick={toggleTheme} className="p-2 rounded-xl hover:bg-white/5 transition-all">
+            {isDark ? <Sun className="w-4 h-4 text-secondary" /> : <Moon className="w-4 h-4 text-secondary" />}
+          </button>
+          <button onClick={loadData} className="p-2 rounded-xl hover:bg-white/5 transition-all">
+            <RefreshCw className="w-4 h-4 text-secondary" />
           </button>
         </div>
-      </motion.div>
+      </header>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Trades */}
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          transition={{ delay: 0.25 }}
-          className="lg:col-span-2 glass-card p-6"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold">Recent Trades</h3>
-            <button 
-              onClick={() => onTabChange('trades')}
-              className="text-xs text-electric hover:text-electric/80 flex items-center gap-1 transition-colors"
+      {/* Mobile Sidebar Overlay */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="md:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+              onClick={() => setSidebarOpen(false)}
+            />
+            <motion.aside
+              initial={{ x: -300 }}
+              animate={{ x: 0 }}
+              exit={{ x: -300 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="md:hidden fixed left-0 top-0 bottom-0 w-72 glass-dark z-50 flex flex-col"
             >
-              View All <ChevronRight className="w-3 h-3" />
+              <SidebarContent
+                user={user}
+                isPaperMode={isPaperMode}
+                setIsPaperMode={setIsPaperMode}
+                activeTab={activeTab}
+                setActiveTab={(tab) => { setActiveTab(tab); setSidebarOpen(false); }}
+                navItems={NAV_ITEMS}
+                onLogout={handleLogout}
+                isConnected={isConnected}
+              />
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-72 glass-dark border-r border-border-primary flex-col z-30">
+        <SidebarContent
+          user={user}
+          isPaperMode={isPaperMode}
+          setIsPaperMode={setIsPaperMode}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          navItems={NAV_ITEMS}
+          onLogout={handleLogout}
+          isConnected={isConnected}
+        />
+      </aside>
+
+      {/* Main Content */}
+      <main className="md:ml-72 pt-16 md:pt-0 relative z-10">
+        {/* Desktop Header */}
+        <div className="hidden md:flex items-center justify-between px-8 py-6 border-b border-border-primary">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">
+              {NAV_ITEMS.find(t => t.id === activeTab)?.label}
+            </h1>
+            <p className="text-sm text-secondary mt-0.5">
+              Welcome back, <span className="text-primary">{user?.full_name || 'Trader'}</span>
+              <span className="mx-2">·</span>
+              <span className={isPaperMode ? 'text-gold' : 'text-profit'}>
+                {isPaperMode ? 'Paper Mode' : 'Live Mode'}
+              </span>
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={toggleTheme} className="p-2.5 rounded-xl glass hover:bg-white/5 transition-all">
+              {isDark ? <Sun className="w-4 h-4 text-secondary" /> : <Moon className="w-4 h-4 text-secondary" />}
+            </button>
+            <button onClick={loadData} className="p-2.5 rounded-xl glass hover:bg-white/5 transition-all">
+              <RefreshCw className="w-4 h-4 text-secondary" />
             </button>
           </div>
-          {trades.length === 0 ? (
-            <div className="text-center py-12">
-              <Activity className="w-12 h-12 text-muted/20 mx-auto mb-3" />
-              <p className="text-sm text-muted mb-2">No trades yet</p>
-              <p className="text-xs text-muted/60">Activate autopilot to start trading</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto -mx-6 px-6">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/5">
-                    <th className="text-left text-xs text-muted pb-3 font-medium">Symbol</th>
-                    <th className="text-left text-xs text-muted pb-3 font-medium">Side</th>
-                    <th className="text-right text-xs text-muted pb-3 font-medium">Price</th>
-                    <th className="text-right text-xs text-muted pb-3 font-medium">P&L</th>
-                    <th className="text-left text-xs text-muted pb-3 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {trades.slice(0, 5).map((trade, i) => (
-                    <tr key={trade.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                      <td className="py-3 font-mono font-medium">{trade.symbol}</td>
-                      <td className="py-3">
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                          trade.side === 'BUY' ? 'bg-profit/10 text-profit' : 'bg-loss/10 text-loss'
-                        }`}>
-                          {trade.side}
-                        </span>
-                      </td>
-                      <td className="py-3 text-right font-mono">
-                        ${trade.entry_price?.toFixed(2) || '—'}
-                      </td>
-                      <td className={`py-3 text-right font-mono font-medium ${
-                        (trade.pnl || 0) >= 0 ? 'text-profit' : 'text-loss'
-                      }`}>
-                        {trade.pnl !== null ? `${trade.pnl >= 0 ? '+' : ''}$${trade.pnl.toFixed(2)}` : '—'}
-                      </td>
-                      <td className="py-3">
-                        <span className={`text-xs px-2 py-1 rounded-full ${
-                          trade.status === 'filled' ? 'bg-profit/10 text-profit' : 'bg-gold/10 text-gold'
-                        }`}>
-                          {trade.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </motion.div>
+        </div>
 
-        {/* Agents Status */}
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          transition={{ delay: 0.3 }}
-          className="glass-card p-6"
-        >
-          <h3 className="font-semibold mb-4">Agents Online</h3>
-          <div className="space-y-3">
-            {agents.length === 0 ? (
-              <p className="text-sm text-muted text-center py-4">Loading agents...</p>
-            ) : (
-              agents.map((agent) => (
-                <div key={agent.name} className="flex items-center gap-3 p-3 rounded-xl bg-navy/30 border border-white/5">
-                  <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
-                    agent.status === 'active' ? 'bg-profit animate-pulse' : 'bg-muted'
-                  }`} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{agent.name}</p>
-                    <p className="text-[10px] text-muted">{agent.role}</p>
-                  </div>
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-                    agent.status === 'active' ? 'bg-profit/10 text-profit' : 'bg-white/5 text-muted'
-                  }`}>
-                    {agent.status}
-                  </span>
-                </div>
-              ))
-            )}
+        {/* Content Area */}
+        <div className="p-4 md:p-8">
+          {error && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 p-4 rounded-2xl bg-loss/10 border border-loss/20 text-loss text-sm flex items-center gap-3"
+            >
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <span className="flex-1">{error}</span>
+              <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-loss/20 text-xs font-medium hover:bg-loss/30">
+                Retry
+              </button>
+            </motion.div>
+          )}
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.15 }}
+            >
+              {activeTab === 'command' && (
+                <CommandCenter
+                  portfolio={portfolio}
+                  trades={trades}
+                  agents={agents}
+                  predictions={predictions}
+                  autoTrading={autoTrading}
+                  onToggleAutoTrading={toggleAutoTrading}
+                  isPaperMode={isPaperMode}
+                  onTabChange={setActiveTab}
+                />
+              )}
+              {activeTab === 'autopilot' && <AutopilotPanel autoTrading={autoTrading} onToggle={toggleAutoTrading} />}
+              {activeTab === 'agents' && <AgentsPanel agents={agents} />}
+              {activeTab === 'predictions' && <PredictionsPanel predictions={predictions} />}
+              {activeTab === 'trades' && <TradesPanel trades={trades} />}
+              {activeTab === 'analytics' && <AnalyticsPanel portfolio={portfolio} trades={trades} />}
+              {activeTab === 'settings' && <SettingsPanel user={user} />}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// ============================================================
+// SIDEBAR CONTENT
+// ============================================================
+function SidebarContent({ user, isPaperMode, setIsPaperMode, activeTab, setActiveTab, navItems, onLogout, isConnected }: any) {
+  return (
+    <div className="flex flex-col h-full p-4">
+      {/* Logo */}
+      <Link href="/" className="flex items-center gap-3 mb-8 px-2">
+        <div className="relative">
+          <div className="w-10 h-10 rounded-2xl bg-accent/10 flex items-center justify-center">
+            <Zap className="w-5 h-5 text-accent" />
           </div>
-          <button 
-            onClick={() => onTabChange('agents')}
-            className="w-full mt-4 py-2 text-xs text-electric hover:text-electric/80 transition-colors flex items-center justify-center gap-1"
-          >
-            View All Agents <ChevronRight className="w-3 h-3" />
+          <div className="absolute inset-0 w-10 h-10 bg-accent/20 rounded-2xl blur-xl" />
+        </div>
+        <div>
+          <span className="font-bold tracking-tight">StarkTrade</span>
+          <span className="block text-[10px] text-secondary -mt-0.5">by ELEV8 DIGITAL</span>
+        </div>
+      </Link>
+
+      {/* Connection Status */}
+      <div className={`mb-4 p-3 rounded-xl text-xs flex items-center gap-2 ${
+        isConnected ? 'bg-profit/5 text-profit border border-profit/10' : 'bg-loss/5 text-loss border border-loss/10'
+      }`}>
+        {isConnected ? <Wifi className="w-3 h-3" /> : <WifiOff className="w-3 h-3" />}
+        {isConnected ? 'Connected' : 'Disconnected'}
+      </div>
+
+      {/* Mode Toggle */}
+      <div className="mb-6 p-1 rounded-xl bg-input border border-border-primary flex">
+        <button
+          onClick={() => setIsPaperMode(true)}
+          className={`flex-1 py-2.5 rounded-lg text-xs font-medium transition-all ${
+            isPaperMode ? 'bg-gold/20 text-gold' : 'text-secondary hover:text-primary'
+          }`}
+        >
+          Paper
+        </button>
+        <button
+          onClick={() => setIsPaperMode(false)}
+          className={`flex-1 py-2.5 rounded-lg text-xs font-medium transition-all ${
+            !isPaperMode ? 'bg-profit/20 text-profit' : 'text-secondary hover:text-primary'
+          }`}
+        >
+          Live
+        </button>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 space-y-1">
+        {navItems.map((tab: any) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all ${
+                isActive
+                  ? 'bg-accent/10 text-accent border border-accent/20'
+                  : 'text-secondary hover:text-primary hover:bg-white/5'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span className="flex-1 text-left">{tab.label}</span>
+              {isActive && <div className="w-1.5 h-1.5 rounded-full bg-accent" />}
+            </button>
+          );
+        })}
+
+        {user?.role === 'admin' && (
+          <div className="border-t border-border-primary my-2 pt-2">
+            <Link
+              href="/admin"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-loss hover:bg-loss/5 transition-all"
+            >
+              <Shield className="w-4 h-4" />
+              Admin Panel
+            </Link>
+          </div>
+        )}
+      </nav>
+
+      {/* User */}
+      <div className="pt-4 border-t border-border-primary">
+        <div className="flex items-center gap-3 px-2 py-2">
+          <div className="w-10 h-10 rounded-xl bg-accent/20 flex items-center justify-center text-accent font-bold">
+            {user?.full_name?.[0] || user?.email?.[0]?.toUpperCase() || 'U'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{user?.full_name || 'Trader'}</p>
+            <p className="text-[10px] text-secondary truncate">{user?.email}</p>
+          </div>
+          <button onClick={onLogout} className="p-2 text-secondary hover:text-primary rounded-lg hover:bg-white/5 transition-all">
+            <LogOut className="w-4 h-4" />
           </button>
-        </motion.div>
+        </div>
       </div>
     </div>
   );
 }
 
 // ============================================================
-// AUTOPILOT TAB
+// COMMAND CENTER
 // ============================================================
-function AutopilotTab({ autoTrading, onToggle }: { autoTrading: boolean; onToggle: () => void }) {
+function CommandCenter({ portfolio, trades, agents, predictions, autoTrading, onToggleAutoTrading, isPaperMode, onTabChange }: any) {
+  const totalValue = portfolio?.total_value || 100000;
+  const dailyPnl = portfolio?.daily_pnl || 0;
+  const totalPnl = portfolio?.total_pnl || 0;
+  const cashBalance = portfolio?.cash_balance || 100000;
+  const winRate = trades.length > 0 
+    ? ((trades.filter((t: any) => (t.pnl || 0) > 0).length / trades.length) * 100).toFixed(1)
+    : '—';
+  const invested = totalValue - cashBalance;
+
+  return (
+    <div className="space-y-6">
+      {/* Hero Stats - Floating Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Portfolio', value: `$${totalValue.toLocaleString()}`, change: `${dailyPnl >= 0 ? '+' : ''}$${dailyPnl.toFixed(2)} today`, positive: dailyPnl >= 0, icon: DollarSign, delay: 0 },
+          { label: 'Total P&L', value: `${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}`, change: `${((totalPnl / 100000) * 100).toFixed(2)}% return`, positive: totalPnl >= 0, icon: TrendingUp, delay: 0.05 },
+          { label: 'Win Rate', value: `${winRate}%`, change: `${trades.length} trades`, positive: true, icon: Target, delay: 0.1 },
+          { label: 'Cash', value: `$${cashBalance.toLocaleString()}`, change: `${((cashBalance / totalValue) * 100).toFixed(0)}% available`, positive: true, icon: Layers, delay: 0.15 },
+        ].map((stat, i) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: stat.delay, duration: 0.5 }}
+            className="glass-card p-5 floating-card"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center">
+                <stat.icon className="w-4 h-4 text-accent" />
+              </div>
+              <span className="text-xs text-secondary">{stat.label}</span>
+            </div>
+            <p className="text-xl font-bold font-mono counter-value">{stat.value}</p>
+            <p className={`text-xs font-mono mt-1 ${stat.positive ? 'text-profit' : 'text-loss'}`}>
+              {stat.change}
+            </p>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Autopilot - Big CTA */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className={`glass-card p-8 border transition-all ${autoTrading ? 'border-profit/30' : 'border-border-primary'}`}
+      >
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-5">
+            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all ${
+              autoTrading ? 'bg-profit/10 animate-pulse' : 'bg-accent/10'
+            }`}>
+              <Zap className={`w-8 h-8 ${autoTrading ? 'text-profit' : 'text-accent'}`} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">Autopilot {autoTrading ? 'ACTIVE' : 'PAUSED'}</h2>
+              <p className="text-sm text-secondary mt-1">
+                {autoTrading 
+                  ? `${agents.filter((a: any) => a.status === 'active').length} agents trading autonomously`
+                  : 'Activate to let AI agents trade for you'
+                }
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onToggleAutoTrading}
+            className={`px-8 py-4 rounded-2xl font-semibold transition-all flex items-center gap-3 ${
+              autoTrading 
+                ? 'bg-loss/10 text-loss border border-loss/20 hover:bg-loss/20' 
+                : 'bg-accent text-bg-primary hover:bg-accent/90 shadow-glow'
+            }`}
+          >
+            {autoTrading ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+            {autoTrading ? 'Pause Autopilot' : 'Activate Autopilot'}
+          </button>
+        </div>
+      </motion.div>
+
+      {/* Two Column: Trades + Predictions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent Trades */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="lg:col-span-2 glass-card p-6"
+        >
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="font-semibold">Recent Trades</h3>
+            <button onClick={() => onTabChange('trades')} className="text-xs text-accent hover:text-accent/80 flex items-center gap-1 transition-colors">
+              View All <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+          {trades.length === 0 ? (
+            <div className="text-center py-12">
+              <Sparkles className="w-12 h-12 text-secondary/20 mx-auto mb-3" />
+              <p className="text-sm text-secondary">No trades yet — activate autopilot to begin</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {trades.slice(0, 5).map((trade: any) => (
+                <div key={trade.id} className="flex items-center justify-between p-3 rounded-xl bg-input/50 border border-border-primary hover:border-border-hover transition-all">
+                  <div className="flex items-center gap-3">
+                    <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                      trade.side === 'BUY' ? 'bg-profit/10 text-profit' : 'bg-loss/10 text-loss'
+                    }`}>
+                      {trade.side}
+                    </span>
+                    <div>
+                      <p className="font-mono font-medium text-sm">{trade.symbol}</p>
+                      <p className="text-[10px] text-secondary">${trade.entry_price?.toFixed(2) || '—'}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-mono text-sm font-medium ${(trade.pnl || 0) >= 0 ? 'text-profit' : 'text-loss'}`}>
+                      {trade.pnl !== null ? `${trade.pnl >= 0 ? '+' : ''}$${trade.pnl.toFixed(2)}` : '—'}
+                    </p>
+                    <p className="text-[10px] text-secondary">{trade.status}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+
+        {/* Kalshi-style Predictions */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="glass-card p-6"
+        >
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="font-semibold">Predictions</h3>
+            <button onClick={() => onTabChange('predictions')} className="text-xs text-accent hover:text-accent/80 flex items-center gap-1 transition-colors">
+              View All <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
+          {predictions.length === 0 ? (
+            <div className="text-center py-8">
+              <Flame className="w-10 h-10 text-secondary/20 mx-auto mb-2" />
+              <p className="text-xs text-secondary">Loading markets...</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {predictions.slice(0, 3).map((p: any) => (
+                <div key={p.id} className="p-4 rounded-xl bg-input/50 border border-border-primary hover:border-border-hover transition-all cursor-pointer">
+                  <p className="text-sm font-medium mb-2">{p.title}</p>
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="badge badge-accent text-[10px]">{p.category}</span>
+                    <span className="text-[10px] text-secondary">${p.volume?.toLocaleString()} vol</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 probability-bar">
+                      <div className="probability-bar-fill" style={{ width: `${p.yes_price * 100}%` }} />
+                    </div>
+                    <span className="text-xs font-mono text-profit">{(p.yes_price * 100).toFixed(0)}%</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </motion.div>
+      </div>
+
+      {/* Agents Grid */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.35 }}
+        className="glass-card p-6"
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-semibold">Agents Online</h3>
+          <button onClick={() => onTabChange('agents')} className="text-xs text-accent hover:text-accent/80 flex items-center gap-1 transition-colors">
+            View All <ChevronRight className="w-3 h-3" />
+          </button>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {agents.length === 0 ? (
+            [...Array(7)].map((_, i) => <div key={i} className="shimmer h-16 rounded-xl" />)
+          ) : (
+            agents.map((agent: any) => (
+              <div key={agent.name} className="p-3 rounded-xl bg-input/50 border border-border-primary hover:border-border-hover transition-all">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`w-2 h-2 rounded-full ${agent.status === 'active' ? 'bg-profit animate-pulse' : 'bg-secondary'}`} />
+                  <span className="text-[10px] text-secondary">{agent.role}</span>
+                </div>
+                <p className="text-xs font-medium truncate">{agent.name}</p>
+              </div>
+            ))
+          )}
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ============================================================
+// PREDICTIONS PANEL (Kalshi-inspired)
+// ============================================================
+function PredictionsPanel({ predictions }: { predictions: Prediction[] }) {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Prediction Markets</h2>
+          <p className="text-sm text-secondary mt-1">Bet on outcomes. Earn from your intuition.</p>
+        </div>
+        <button className="btn-primary text-sm flex items-center gap-2">
+          <Flame className="w-4 h-4" /> Create Market
+        </button>
+      </div>
+
+      {predictions.length === 0 ? (
+        <div className="glass-card p-16 text-center">
+          <Flame className="w-16 h-16 text-secondary/20 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No Markets Yet</h3>
+          <p className="text-sm text-secondary">Prediction markets will appear here.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {predictions.map((p) => (
+            <div key={p.id} className="glass-card p-6 hover:border-accent/20 transition-all cursor-pointer">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="badge badge-accent">{p.category}</span>
+                <span className="text-[10px] text-secondary ml-auto">${p.volume?.toLocaleString()} volume</span>
+              </div>
+              <h3 className="font-semibold mb-4">{p.title}</h3>
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-profit font-mono">YES {(p.yes_price * 100).toFixed(0)}¢</span>
+                    <span className="text-loss font-mono">NO {((1 - p.yes_price) * 100).toFixed(0)}¢</span>
+                  </div>
+                  <div className="probability-bar">
+                    <motion.div
+                      className="probability-bar-fill"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${p.yes_price * 100}%` }}
+                      transition={{ duration: 1 }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-4">
+                <button className="flex-1 py-2.5 rounded-xl bg-profit/10 text-profit text-sm font-medium hover:bg-profit/20 transition-all">
+                  Buy YES
+                </button>
+                <button className="flex-1 py-2.5 rounded-xl bg-loss/10 text-loss text-sm font-medium hover:bg-loss/20 transition-all">
+                  Buy NO
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// AUTOPILOT PANEL
+// ============================================================
+function AutopilotPanel({ autoTrading, onToggle }: any) {
   const [strategy, setStrategy] = useState('all-weather');
   const [riskLevel, setRiskLevel] = useState(5);
   const [saving, setSaving] = useState(false);
@@ -604,7 +711,6 @@ function AutopilotTab({ autoTrading, onToggle }: { autoTrading: boolean; onToggl
 
   const handleSave = async () => {
     setSaving(true);
-    // Simulate save
     await new Promise(r => setTimeout(r, 1000));
     setSaving(false);
     setSaved(true);
@@ -614,370 +720,140 @@ function AutopilotTab({ autoTrading, onToggle }: { autoTrading: boolean; onToggl
   return (
     <div className="space-y-6 max-w-3xl">
       <div className="glass-card p-8 space-y-8">
-        {/* Master Toggle */}
-        <div className={`p-5 rounded-xl border transition-all ${autoTrading ? 'bg-profit/5 border-profit/20' : 'bg-navy/50 border-white/5'}`}>
+        <div className={`p-6 rounded-2xl border transition-all ${autoTrading ? 'bg-profit/5 border-profit/20' : 'bg-input border-border-primary'}`}>
           <div className="flex items-center justify-between">
             <div>
               <h3 className="font-semibold text-lg">Auto-Trading</h3>
-              <p className="text-sm text-muted mt-1">
-                {autoTrading ? 'Agents are actively trading on your behalf' : 'Enable to start autonomous trading'}
+              <p className="text-sm text-secondary mt-1">
+                {autoTrading ? 'Agents are actively trading' : 'Enable autonomous trading'}
               </p>
             </div>
-            <button
-              onClick={onToggle}
-              className={`w-16 h-8 rounded-full transition-all relative ${
-                autoTrading ? 'bg-profit' : 'bg-white/10'
-              }`}
-            >
-              <div className={`w-6 h-6 rounded-full bg-white transition-transform absolute top-1 shadow ${
-                autoTrading ? 'translate-x-9' : 'translate-x-1'
-              }`} />
+            <button onClick={onToggle} className={`w-16 h-8 rounded-full transition-all relative ${autoTrading ? 'bg-profit' : 'bg-white/10'}`}>
+              <div className={`w-6 h-6 rounded-full bg-white transition-transform absolute top-1 shadow ${autoTrading ? 'translate-x-9' : 'translate-x-1'}`} />
             </button>
           </div>
         </div>
 
-        {/* Strategy */}
         <div>
           <label className="text-sm font-medium mb-3 block">Strategy</label>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {['Value', 'Quant', 'Momentum', 'All-Weather', 'Aggressive', 'Conservative'].map((s) => (
-              <button
-                key={s}
-                onClick={() => setStrategy(s.toLowerCase())}
-                className={`px-4 py-3.5 rounded-xl border text-sm font-medium transition-all ${
-                  strategy === s.toLowerCase()
-                    ? 'border-electric/30 bg-electric/10 text-electric'
-                    : 'border-white/10 hover:border-electric/20 hover:bg-white/5'
-                }`}
-              >
+              <button key={s} onClick={() => setStrategy(s.toLowerCase())} className={`px-4 py-3.5 rounded-xl border text-sm font-medium transition-all ${strategy === s.toLowerCase() ? 'border-accent/30 bg-accent/10 text-accent' : 'border-border-primary hover:border-border-hover'}`}>
                 {s}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Risk Level */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <label className="text-sm font-medium">Risk Tolerance</label>
-            <span className="text-sm font-mono text-electric">{riskLevel}/10</span>
+            <span className="text-sm font-mono text-accent">{riskLevel}/10</span>
           </div>
-          <input
-            type="range"
-            min="1"
-            max="10"
-            value={riskLevel}
-            onChange={(e) => setRiskLevel(Number(e.target.value))}
-            className="w-full accent-electric h-2 rounded-full"
-          />
-          <div className="flex justify-between text-xs text-muted mt-2">
-            <span>Conservative</span>
-            <span>Aggressive</span>
-          </div>
+          <input type="range" min="1" max="10" value={riskLevel} onChange={(e) => setRiskLevel(Number(e.target.value))} className="w-full accent-accent" />
         </div>
 
-        <button 
-          onClick={handleSave}
-          disabled={saving}
-          className="btn-primary w-full flex items-center justify-center gap-2"
-        >
-          {saving ? (
-            <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
-          ) : saved ? (
-            <><CheckCircle className="w-4 h-4" /> Saved!</>
-          ) : (
-            'Save Settings'
-          )}
+        <button onClick={handleSave} disabled={saving} className="btn-primary w-full flex items-center justify-center gap-2">
+          {saving ? 'Saving...' : saved ? '✓ Saved!' : 'Save Settings'}
         </button>
       </div>
     </div>
   );
 }
 
-// ============================================================
-// AGENTS TAB
-// ============================================================
-function AgentsTab({ agents }: { agents: AgentStatus[] }) {
+// Simple panels for other tabs
+function AgentsPanel({ agents }: any) {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold tracking-tight">Agents Council</h2>
-      <p className="text-sm text-muted">7 specialized AI agents, each with a unique trading strategy.</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {agents.length === 0 ? (
-          [...Array(7)].map((_, i) => (
-            <div key={i} className="glass-card p-6 shimmer h-24" />
-          ))
-        ) : (
-          agents.map((agent) => (
-            <div key={agent.name} className="glass-card p-6 hover:border-electric/20 transition-all">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <span className={`w-3 h-3 rounded-full ${
-                    agent.status === 'active' ? 'bg-profit animate-pulse' : 'bg-muted'
-                  }`} />
-                  <div>
-                    <h3 className="font-semibold">{agent.name}</h3>
-                    <p className="text-xs text-muted">{agent.role}</p>
-                  </div>
-                </div>
-                <span className={`text-xs px-3 py-1 rounded-full font-medium ${
-                  agent.status === 'active' ? 'bg-profit/10 text-profit' : 'bg-muted/10 text-muted'
-                }`}>
-                  {agent.status}
-                </span>
+        {agents.map((agent: any) => (
+          <div key={agent.name} className="glass-card p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className={`w-3 h-3 rounded-full ${agent.status === 'active' ? 'bg-profit animate-pulse' : 'bg-secondary'}`} />
+                <div><h3 className="font-semibold">{agent.name}</h3><p className="text-xs text-secondary">{agent.role}</p></div>
               </div>
+              <span className={`text-xs px-3 py-1 rounded-full ${agent.status === 'active' ? 'bg-profit/10 text-profit' : 'bg-secondary/10 text-secondary'}`}>{agent.status}</span>
             </div>
-          ))
-        )}
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-// ============================================================
-// TRADES TAB
-// ============================================================
-function TradesTab({ trades }: { trades: Trade[] }) {
+function TradesPanel({ trades }: any) {
   const handleExport = () => {
     if (trades.length === 0) return;
-    const csv = [
-      ['Symbol', 'Side', 'Quantity', 'Entry Price', 'Stop Loss', 'P&L', 'Status', 'Date'],
-      ...trades.map(t => [
-        t.symbol, t.side, t.quantity, t.entry_price || '', t.stop_loss || '',
-        t.pnl || '', t.status, t.created_at
-      ])
-    ].map(row => row.join(',')).join('\n');
-    
+    const csv = [['Symbol','Side','Qty','Price','P&L','Status','Date'], ...trades.map((t: any) => [t.symbol, t.side, t.quantity, t.entry_price||'', t.pnl||'', t.status, t.created_at])].map(r => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `starktrade-trades-${new Date().toISOString().split('T')[0]}.csv`;
+    a.href = URL.createObjectURL(blob);
+    a.download = 'starktrade-trades.csv';
     a.click();
-    URL.revokeObjectURL(url);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Trade History</h2>
-          <p className="text-sm text-muted mt-1">{trades.length} trades recorded</p>
-        </div>
-        <button 
-          onClick={handleExport}
-          disabled={trades.length === 0}
-          className="btn-outline text-sm flex items-center gap-2 disabled:opacity-50"
-        >
-          <Download className="w-4 h-4" /> Export CSV
-        </button>
+        <div><h2 className="text-2xl font-bold tracking-tight">Trade History</h2><p className="text-sm text-secondary mt-1">{trades.length} trades</p></div>
+        <button onClick={handleExport} disabled={trades.length === 0} className="btn-outline text-sm flex items-center gap-2"><Download className="w-4 h-4" /> Export CSV</button>
       </div>
-
       {trades.length === 0 ? (
-        <div className="glass-card p-16 text-center">
-          <Activity className="w-16 h-16 text-muted/20 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No Trades Yet</h3>
-          <p className="text-sm text-muted max-w-md mx-auto">
-            Your trade history will appear here once autopilot starts executing trades.
-          </p>
-        </div>
+        <div className="glass-card p-16 text-center"><Activity className="w-16 h-16 text-secondary/20 mx-auto mb-4" /><h3 className="text-lg font-semibold mb-2">No Trades Yet</h3></div>
       ) : (
         <div className="glass-card overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/5 bg-navy/30">
-                  <th className="text-left text-xs text-muted p-4 font-medium">Symbol</th>
-                  <th className="text-left text-xs text-muted p-4 font-medium">Side</th>
-                  <th className="text-right text-xs text-muted p-4 font-medium">Qty</th>
-                  <th className="text-right text-xs text-muted p-4 font-medium">Price</th>
-                  <th className="text-right text-xs text-muted p-4 font-medium">Stop Loss</th>
-                  <th className="text-right text-xs text-muted p-4 font-medium">P&L</th>
-                  <th className="text-left text-xs text-muted p-4 font-medium">Status</th>
-                  <th className="text-right text-xs text-muted p-4 font-medium">Date</th>
+          <table className="w-full text-sm">
+            <thead><tr className="border-b border-border-primary bg-input/30">
+              <th className="text-left text-xs text-secondary p-4">Symbol</th><th className="text-left text-xs text-secondary p-4">Side</th>
+              <th className="text-right text-xs text-secondary p-4">Price</th><th className="text-right text-xs text-secondary p-4">P&L</th>
+              <th className="text-left text-xs text-secondary p-4">Status</th>
+            </tr></thead>
+            <tbody>
+              {trades.map((t: any) => (
+                <tr key={t.id} className="border-b border-border-primary hover:bg-white/5">
+                  <td className="p-4 font-mono font-medium">{t.symbol}</td>
+                  <td className="p-4"><span className={`text-xs px-2 py-1 rounded-full ${t.side === 'BUY' ? 'bg-profit/10 text-profit' : 'bg-loss/10 text-loss'}`}>{t.side}</span></td>
+                  <td className="p-4 text-right font-mono">${t.entry_price?.toFixed(2) || '—'}</td>
+                  <td className={`p-4 text-right font-mono font-medium ${(t.pnl||0) >= 0 ? 'text-profit' : 'text-loss'}`}>{t.pnl !== null ? `${t.pnl >= 0 ? '+' : ''}$${t.pnl.toFixed(2)}` : '—'}</td>
+                  <td className="p-4"><span className={`text-xs px-2 py-1 rounded-full ${t.status === 'filled' ? 'bg-profit/10 text-profit' : 'bg-gold/10 text-gold'}`}>{t.status}</span></td>
                 </tr>
-              </thead>
-              <tbody>
-                {trades.map((trade) => (
-                  <tr key={trade.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                    <td className="p-4 font-mono font-medium">{trade.symbol}</td>
-                    <td className="p-4">
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                        trade.side === 'BUY' ? 'bg-profit/10 text-profit' : 'bg-loss/10 text-loss'
-                      }`}>
-                        {trade.side}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right font-mono">{trade.quantity}</td>
-                    <td className="p-4 text-right font-mono">${trade.entry_price?.toFixed(2) || '—'}</td>
-                    <td className="p-4 text-right font-mono">${trade.stop_loss?.toFixed(2) || '—'}</td>
-                    <td className={`p-4 text-right font-mono font-medium ${(trade.pnl || 0) >= 0 ? 'text-profit' : 'text-loss'}`}>
-                      {trade.pnl !== null ? `${trade.pnl >= 0 ? '+' : ''}$${trade.pnl.toFixed(2)}` : '—'}
-                    </td>
-                    <td className="p-4">
-                      <span className={`text-xs px-2.5 py-1 rounded-full ${
-                        trade.status === 'filled' ? 'bg-profit/10 text-profit' : 'bg-gold/10 text-gold'
-                      }`}>
-                        {trade.status}
-                      </span>
-                    </td>
-                    <td className="p-4 text-right text-xs text-muted">
-                      {new Date(trade.created_at).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
   );
 }
 
-// ============================================================
-// ANALYTICS TAB
-// ============================================================
-function AnalyticsTab({ portfolio, trades }: { portfolio: Portfolio | null; trades: Trade[] }) {
-  const wins = trades.filter(t => (t.pnl || 0) > 0);
-  const losses = trades.filter(t => (t.pnl || 0) < 0);
+function AnalyticsPanel({ portfolio, trades }: any) {
+  const wins = trades.filter((t: any) => (t.pnl || 0) > 0);
   const winRate = trades.length > 0 ? ((wins.length / trades.length) * 100).toFixed(1) : '0';
-  const avgWin = wins.length > 0 ? (wins.reduce((a, t) => a + (t.pnl || 0), 0) / wins.length).toFixed(2) : '0';
-  const avgLoss = losses.length > 0 ? Math.abs(losses.reduce((a, t) => a + (t.pnl || 0), 0) / losses.length).toFixed(2) : '0';
-  const profitFactor = losses.length > 0 && Number(avgLoss) > 0 
-    ? (Number(avgWin) / Number(avgLoss)).toFixed(2) 
-    : '—';
-
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold tracking-tight">Analytics</h2>
-      
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Total Trades', value: trades.length, color: 'text-white' },
-          { label: 'Win Rate', value: `${winRate}%`, color: 'text-profit' },
-          { label: 'Avg Win', value: `$${avgWin}`, color: 'text-profit' },
-          { label: 'Avg Loss', value: `$${avgLoss}`, color: 'text-loss' },
-        ].map((stat, i) => (
-          <motion.div 
-            key={stat.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
-            className="glass-card p-5"
-          >
-            <p className="text-xs text-muted mb-1">{stat.label}</p>
-            <p className={`text-2xl font-bold font-mono ${stat.color}`}>{stat.value}</p>
-          </motion.div>
+        {[{l:'Trades',v:trades.length},{l:'Win Rate',v:`${winRate}%`},{l:'Portfolio',v:`$${(portfolio?.total_value||100000).toLocaleString()}`},{l:'Cash',v:`$${(portfolio?.cash_balance||100000).toLocaleString()}`}].map((s,i)=>(
+          <div key={s.l} className="glass-card p-5"><p className="text-xs text-secondary mb-1">{s.l}</p><p className="text-2xl font-bold font-mono">{s.v}</p></div>
         ))}
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="glass-card p-6">
-          <h3 className="font-semibold mb-4">Performance Summary</h3>
-          {trades.length === 0 ? (
-            <p className="text-sm text-muted">No trades to analyze yet.</p>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted">Profit Factor</span>
-                <span className="text-sm font-mono">{profitFactor}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted">Best Trade</span>
-                <span className="text-sm font-mono text-profit">
-                  +${wins.length > 0 ? Math.max(...wins.map(t => t.pnl || 0)).toFixed(2) : '0'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted">Worst Trade</span>
-                <span className="text-sm font-mono text-loss">
-                  ${losses.length > 0 ? Math.min(...losses.map(t => t.pnl || 0)).toFixed(2) : '0'}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="glass-card p-6">
-          <h3 className="font-semibold mb-4">Portfolio</h3>
-          {portfolio ? (
-            <div className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted">Total Value</span>
-                <span className="text-sm font-mono">${portfolio.total_value.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted">Cash Available</span>
-                <span className="text-sm font-mono">${portfolio.cash_balance.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted">Invested</span>
-                <span className="text-sm font-mono">
-                  ${(portfolio.total_value - portfolio.cash_balance).toLocaleString()}
-                </span>
-              </div>
-            </div>
-          ) : (
-            <p className="text-sm text-muted">Loading portfolio...</p>
-          )}
-        </div>
       </div>
     </div>
   );
 }
 
-// ============================================================
-// SETTINGS TAB
-// ============================================================
-function SettingsTab({ user }: { user: User | null }) {
+function SettingsPanel({ user }: any) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="space-y-6">
-        <div className="glass-card p-8 space-y-6">
-          <h3 className="font-semibold text-lg flex items-center gap-2">
-            <span className="w-8 h-8 rounded-lg bg-electric/10 flex items-center justify-center">
-              <Settings className="w-4 h-4 text-electric" />
-            </span>
-            Account Settings
-          </h3>
-          <div className="space-y-4">
-            {[
-              { label: 'Email', value: user?.email || '—' },
-              { label: 'Role', value: user?.role?.toUpperCase() || 'FREE' },
-              { label: 'Strategy', value: user?.strategy?.replace('_', ' ')?.toUpperCase() || 'ALL WEATHER' },
-              { label: 'Risk Tolerance', value: `${user?.risk_tolerance || 5}/10` },
-            ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between p-3 rounded-lg bg-navy/30">
-                <span className="text-sm text-muted">{item.label}</span>
-                <span className="text-sm font-medium">{item.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
         <div className="glass-card p-8 space-y-4">
-          <h3 className="font-semibold text-lg">Broker Connections</h3>
-          <p className="text-sm text-muted">Connect a broker to enable live trading with real money.</p>
-          {[
-            { name: 'Alpaca', desc: 'Commission-free stocks', available: true },
-            { name: 'Interactive Brokers', desc: 'Global markets', available: true },
-            { name: 'Coinbase', desc: 'Cryptocurrency', available: true },
-            { name: 'Binance', desc: 'Crypto & derivatives', available: true },
-          ].map((broker) => (
-            <div key={broker.name} className="flex items-center justify-between p-4 rounded-xl bg-navy/50 border border-white/5">
-              <div>
-                <p className="font-medium text-sm">{broker.name}</p>
-                <p className="text-xs text-muted">{broker.desc}</p>
-              </div>
-              <button className="px-4 py-2 rounded-lg border border-electric/20 text-electric text-xs font-medium hover:bg-electric/10 transition-all">
-                Connect
-              </button>
-            </div>
+          <h3 className="font-semibold text-lg">Account</h3>
+          {[{l:'Email',v:user?.email},{l:'Role',v:user?.role?.toUpperCase()},{l:'Strategy',v:user?.strategy?.replace('_',' ')}].map(i=>(
+            <div key={i.l} className="flex justify-between p-3 rounded-xl bg-input/50"><span className="text-sm text-secondary">{i.l}</span><span className="text-sm font-medium">{i.v||'—'}</span></div>
           ))}
         </div>
       </div>
-
       <ReferralDashboard />
     </div>
   );

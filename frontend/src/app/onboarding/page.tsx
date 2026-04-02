@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import {
@@ -77,6 +77,26 @@ const STRATEGIES: Record<string, { name: string; desc: string; emoji: string }> 
 export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState(-1);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  // Check if already logged in — skip quiz, go straight to dashboard
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (token) {
+      // Verify token is still valid
+      apiFetch('/api/v1/auth/me')
+        .then(res => {
+          if (res.ok) {
+            router.push('/dashboard');
+          } else {
+            setCheckingAuth(false);
+          }
+        })
+        .catch(() => setCheckingAuth(false));
+    } else {
+      setCheckingAuth(false);
+    }
+  }, [router]);
   const [answers, setAnswers] = useState<number[]>([]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -152,13 +172,8 @@ export default function OnboardingPage() {
       const tokenData = await res.json();
       setAuthToken(tokenData.access_token);
 
-      const meRes = await apiFetch('/api/v1/auth/me');
-      const me = await meRes.json();
-      if (me.role === 'admin') {
-        setIsAdmin(true);
-      }
-
-      setStep(0);
+      // GO STRAIGHT TO DASHBOARD — NO QUIZ FOR RETURNING USERS
+      router.push('/dashboard');
     } catch (err) {
       setError('Connection error. Make sure the backend is running.');
     }
@@ -185,6 +200,18 @@ export default function OnboardingPage() {
   };
 
   const progress = step >= 0 ? ((step + 1) / QUIZ_QUESTIONS.length) * 100 : 0;
+
+  // Show loading while checking auth
+  if (checkingAuth) {
+    return (
+      <div className="min-h-screen gradient-mesh grid-bg flex items-center justify-center">
+        <div className="text-center">
+          <Zap className="w-12 h-12 text-electric mx-auto mb-4 animate-pulse" />
+          <p className="text-muted">Checking your session...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen gradient-mesh grid-bg flex items-center justify-center px-6 py-12">

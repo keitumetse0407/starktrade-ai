@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { ClientProviders } from '@/components/ClientProviders';
+import { ThemeProvider } from '@/lib/theme';
 
 export const metadata: Metadata = {
   title: 'StarkTrade AI — Autonomous Trading. Institutional Results.',

@@ -3,9 +3,19 @@ StarkTrade AI — Simplified Backend for VPS Deployment
 Works without heavy dependencies (langchain, torch, etc.)
 """
 import os
+
+# Use uvloop for 5-10x faster async performance
+try:
+    import uvloop
+    uvloop.install()
+    print("✅ uvloop installed - async performance boosted")
+except ImportError:
+    pass
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
@@ -27,8 +37,15 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
-# Database
-engine = create_async_engine(DATABASE_URL, echo=False)
+# Database with connection pooling
+engine = create_async_engine(
+    DATABASE_URL, 
+    echo=False,
+    pool_size=20,
+    max_overflow=30,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+)
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 class Base(DeclarativeBase):
@@ -148,6 +165,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="StarkTrade AI", version="1.0.0", lifespan=lifespan)
 
+# GZip compression for faster responses
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
