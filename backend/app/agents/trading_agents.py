@@ -12,6 +12,8 @@ from typing import Optional
 from dataclasses import dataclass
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+KILO_API_KEY = os.getenv("KILO_API_KEY", "")
+KILO_API_URL = os.getenv("KILO_API_URL", "https://api.kilocode.ai/v1")
 
 
 @dataclass
@@ -37,8 +39,117 @@ class TradingAgent:
     
     async def analyze(self, market_data: dict) -> dict:
         """Analyze market data and return recommendation."""
-        if not OPENAI_API_KEY:
-            return self._mock_analysis(market_data)
+        # Try Kilo Code first (free), then OpenAI, then smart mock
+        if KILO_API_KEY:
+            try:
+                return await self._kilo_analysis(market_data)
+            except Exception as e:
+                print(f"Kilo failed for {self.name}: {e}")
+        
+        if OPENAI_API_KEY:
+            try:
+                return await self._openai_analysis(market_data)
+            except Exception as e:
+                print(f"OpenAI failed for {self.name}: {e}")
+        
+        return self._smart_mock_analysis(market_data)
+    
+    async def _kilo_analysis(self, market_data: dict) -> dict:
+        """Kilo Code API analysis."""
+        import httpx
+        
+        prompt = f"""Analyze this market data and provide a trading recommendation.
+
+Market Data:
+{json.dumps(market_data, indent=2)}
+
+Respond ONLY with JSON:
+{{"signal": "buy" | "sell" | "hold", "confidence": 0.0-1.0, "reasoning": "brief"}}"""
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{KILO_API_URL}/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {KILO_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": "anthropic/claude-3.5-haiku-latest",
+                    "messages": [
+                        {"role": "system", "content": self.system_prompt},
+                        {"role": "user", "content": prompt}
+                    ],
+                    "temperature": 0.1,
+                    "max_tokens": 200
+                },
+                timeout=30
+            )
+            
+            data = response.json()
+            
+            if data.get("choices"):
+                content = data["choices"][0]["message"]["content"]
+            else:
+                raise Exception(f"Kilo API error: {data}")
+        
+        try:
+            result = json.loads(content)
+        except:
+            if "```json" in content:
+                result = json.loads(content.split("```json")[1].split("```")[0])
+            else:
+                result = {"signal": "hold", "confidence": 0.5, "reasoning": content}
+        
+        return {
+            "agent": self.name,
+            "persona": self.persona,
+            "signal": result.get("signal", "hold"),
+            "confidence": result.get("confidence", 0.5),
+            "reasoning": result.get("reasoning", ""),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    
+    async def _openai_analysis(self, market_data: dict) -> dict:
+        """Real OpenAI analysis."""
+        import openai
+        client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
+        
+        prompt = f"""Analyze this market data and provide a trading recommendation.
+
+Market Data:
+{json.dumps(market_data, indent=2)}
+
+Respond ONLY with JSON:
+{{"signal": "buy" | "sell" | "hold", "confidence": 0.0-1.0, "reasoning": "brief"}}"""
+
+        response = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.1,
+            max_tokens=200
+        )
+        
+        content = response.choices[0].message.content
+        
+        try:
+            result = json.loads(content)
+        except:
+            if "```json" in content:
+                result = json.loads(content.split("```json")[1].split("```")[0])
+            else:
+                result = {"signal": "hold", "confidence": 0.5, "reasoning": content}
+        
+        return {
+            "agent": self.name,
+            "persona": self.persona,
+            "signal": result.get("signal", "hold"),
+            "confidence": result.get("confidence", 0.5),
+            "reasoning": result.get("reasoning", ""),
+            "timestamp": datetime.utcnow().isoformat()
+        }
         
         try:
             import openai
@@ -103,16 +214,78 @@ Respond in JSON format:
                 "timestamp": datetime.utcnow().isoformat()
             }
     
-    def _mock_analysis(self, market_data: dict) -> dict:
-        """Mock analysis when OpenAI is not configured."""
+    def _smart_mock_analysis(self, market_data: dict) -> dict:
+        """Smart mock analysis using technical indicators."""
         import random
-        signals = ["buy", "sell", "hold"]
+        
+        # Use market data to make intelligent decisions
+        price = market_data.get("price", 100)
+        change = market_data.get("change_pct", 0)
+        rsi = market_data.get("rsi", 50)
+        volume = market_data.get("volume", 1000000)
+        
+        # Agent-specific logic
+        signal = "hold"
+        confidence = 0.5
+        reasoning = ""
+        
+        if self.name == "The Researcher":
+            sentiment = market_data.get("news_sentiment", 0)
+            if sentiment > 0.3:
+                signal = "buy"
+                confidence = 0.6 + sentiment * 0.3
+                reasoning = "Positive news sentiment detected"
+            elif sentiment < -0.3:
+                signal = "sell"
+                confidence = 0.6 + abs(sentiment) * 0.3
+                reasoning = "Negative news sentiment detected"
+            else:
+                reasoning = "Neutral sentiment - watching"
+                
+        elif self.name == "The Strategist":
+            if change > 2 and rsi < 70:
+                signal = "buy"
+                confidence = 0.7
+                reasoning = "Strong momentum with room to run"
+            elif change < -2 and rsi > 30:
+                signal = "sell"
+                confidence = 0.65
+                reasoning = "Downward momentum confirmed"
+            else:
+                reasoning = "No clear value opportunity"
+                
+        elif self.name == "The Quant":
+            ema20 = market_data.get("ema_20", price * 0.99)
+            if price > ema20 * 1.01 and rsi < 65:
+                signal = "buy"
+                confidence = 0.75
+                reasoning = "Price above EMA20, RSI not overbought"
+            elif price < ema20 * 0.99 and rsi > 35:
+                signal = "sell"
+                confidence = 0.7
+                reasoning = "Price below EMA20, RSI not oversold"
+            else:
+                reasoning = "No statistical edge detected"
+                
+        elif self.name == "The Fundamentalist":
+            # Simplified fundamental check
+            if change > 1 and volume > 1500000:
+                signal = "buy"
+                confidence = 0.6
+                reasoning = "Strong buying volume confirms trend"
+            elif change < -1 and volume > 1500000:
+                signal = "sell"
+                confidence = 0.6
+                reasoning = "Heavy selling pressure"
+            else:
+                reasoning = "Volume doesn't confirm price action"
+        
         return {
             "agent": self.name,
             "persona": self.persona,
-            "signal": random.choice(signals),
-            "confidence": random.uniform(0.5, 0.9),
-            "reasoning": f"{self.name} analysis complete (demo mode)",
+            "signal": signal,
+            "confidence": min(confidence, 0.9),
+            "reasoning": reasoning + " (technical analysis mode)",
             "timestamp": datetime.utcnow().isoformat()
         }
 

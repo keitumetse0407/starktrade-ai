@@ -12,6 +12,9 @@ try:
 except ImportError:
     pass
 
+from dotenv import load_dotenv
+load_dotenv()  # Load .env file
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.middleware.cors import CORSMiddleware
