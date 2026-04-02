@@ -23,10 +23,4 @@ Sentry.init({
     'NetworkError',
     'Failed to fetch',
   ],
-  
-  // Custom tags
-  initialTags: {
-    app: 'starktrade-ai',
-    component: 'frontend',
-  },
 });

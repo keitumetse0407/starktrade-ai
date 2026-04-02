@@ -7,7 +7,8 @@ import {
   Target, Zap, RefreshCw, LogOut
 } from 'lucide-react';
 import Link from 'next/link';
-import { CommandCenter, AutopilotControls, AgentsCouncil, TradeHistory, Predictions, Analytics, SettingsPanel } from '@/components/dashboard/DashboardPanels';
+import { CommandCenter } from '@/components/dashboard/CommandCenter';
+import { AutopilotControls, AgentsCouncil, TradeHistory, Predictions, Analytics, SettingsPanel } from '@/components/dashboard/DashboardPanels';
 
 // ============================================================
 // MOCK DATA GENERATORS
