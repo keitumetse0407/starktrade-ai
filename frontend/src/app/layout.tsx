@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Script from 'next/script';
 import './globals.css';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -31,12 +30,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className="dark">
       <head>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
-        {/* Google AdSense */}
-        <Script
+        {/* Google AdSense - MUST be a regular script tag for verification */}
+        <script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3282825134840555"
           crossOrigin="anonymous"
-          strategy="afterInteractive"
         />
       </head>
       <body className="min-h-screen gradient-bg antialiased">
