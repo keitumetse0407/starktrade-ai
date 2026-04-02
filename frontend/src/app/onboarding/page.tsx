@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import {
   Shield, Zap, ArrowRight, ArrowLeft, Check, Eye, EyeOff,
-  Sparkles, Target, Brain, TrendingUp, Lock, Mail, User
+  Sparkles, Target, Brain, TrendingUp, Lock, Mail, User, RefreshCw
 } from 'lucide-react';
 
 const QUIZ_QUESTIONS = [

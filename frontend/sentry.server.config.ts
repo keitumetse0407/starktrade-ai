@@ -11,10 +11,4 @@ Sentry.init({
   
   // Debug in development
   debug: process.env.NODE_ENV === 'development',
-  
-  // Custom tags
-  initialTags: {
-    app: 'starktrade-ai',
-    component: 'frontend-server',
-  },
 });
