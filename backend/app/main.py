@@ -32,6 +32,7 @@ if os.getenv("SENTRY_DSN"):
     )
 
 from app.api.v1 import auth, portfolio, trades, agents, predictions, ws, market_data, admin
+from app.payfast_routes import router as payfast_router
 
 
 @asynccontextmanager
@@ -88,3 +89,6 @@ app.include_router(predictions.router, prefix="/api/v1/predictions", tags=["Pred
 app.include_router(market_data.router, prefix="/api/v1/market", tags=["Market Data"])
 app.include_router(ws.router, prefix="/api/v1/ws", tags=["WebSocket"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["Admin"])
+
+# PayFast payment routes
+app.include_router(payfast_router)
