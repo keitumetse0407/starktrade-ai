@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* Google AdSense */}
         <Script
           async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX"
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3282825134840555"
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
