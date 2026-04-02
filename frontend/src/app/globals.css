@@ -284,55 +284,92 @@ body {
    BADGE
    ================================ */
 .badge {
-  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .badge-electric {
-  @apply bg-electric/10 text-electric border border-electric/20;
+  background: rgba(0, 212, 255, 0.1);
+  color: #00D4FF;
+  border: 1px solid rgba(0, 212, 255, 0.2);
 }
 
 .badge-profit {
-  @apply bg-profit/10 text-profit border border-profit/20;
+  background: rgba(0, 255, 136, 0.1);
+  color: #00FF88;
+  border: 1px solid rgba(0, 255, 136, 0.2);
 }
 
 .badge-loss {
-  @apply bg-loss/10 text-loss border border-loss/20;
+  background: rgba(255, 51, 102, 0.1);
+  color: #FF3366;
+  border: 1px solid rgba(255, 51, 102, 0.2);
 }
 
 .badge-gold {
-  @apply bg-gold/10 text-gold border border-gold/20;
+  background: rgba(255, 215, 0, 0.1);
+  color: #FFD700;
+  border: 1px solid rgba(255, 215, 0, 0.2);
 }
 
 /* ================================
    INPUT STYLES
    ================================ */
 .input-stark {
-  @apply w-full bg-navy/50 border border-white/10 rounded-lg px-4 py-3 text-sm 
-         focus:border-electric/50 focus:outline-none focus:ring-1 focus:ring-electric/20
-         placeholder:text-muted/50 transition-all duration-200;
+  width: 100%;
+  background: rgba(10, 14, 39, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  transition: all 0.2s;
+}
+
+.input-stark:focus {
+  border-color: rgba(0, 212, 255, 0.5);
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(0, 212, 255, 0.2);
+}
+
+.input-stark::placeholder {
+  color: rgba(136, 146, 176, 0.5);
 }
 
 /* ================================
    TABLE STYLES
    ================================ */
 .table-stark {
-  @apply w-full;
+  width: 100%;
 }
 
 .table-stark thead tr {
-  @apply border-b border-white/5;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .table-stark th {
-  @apply text-left text-xs text-muted p-4 font-medium;
+  text-align: left;
+  font-size: 0.75rem;
+  color: #8892B0;
+  padding: 1rem;
+  font-weight: 500;
 }
 
 .table-stark tbody tr {
-  @apply border-b border-white/5 hover:bg-white/5 transition-colors;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background 0.2s;
+}
+
+.table-stark tbody tr:hover {
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .table-stark td {
-  @apply p-4 text-sm;
+  padding: 1rem;
+  font-size: 0.875rem;
 }
 
 /* ================================
