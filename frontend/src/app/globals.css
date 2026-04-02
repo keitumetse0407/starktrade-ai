@@ -164,8 +164,8 @@ body {
    ================================ */
 .btn-primary {
   @apply px-6 py-3 bg-electric text-navy font-semibold rounded-xl 
-         hover:bg-electric/90 transition-all duration-200 
-         shadow-glow-electric hover:shadow-lg;
+         hover:bg-electric/90 transition-all duration-200 hover:shadow-lg;
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
 }
 
 .btn-outline {
@@ -175,8 +175,8 @@ body {
 
 .btn-profit {
   @apply px-6 py-3 bg-profit text-navy font-semibold rounded-xl 
-         hover:bg-profit/90 transition-all duration-200 
-         shadow-glow-profit;
+         hover:bg-profit/90 transition-all duration-200;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.3);
 }
 
 .btn-ghost {
