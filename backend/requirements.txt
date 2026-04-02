@@ -1,0 +1,50 @@
+# StarkTrade AI — Python Backend Dependencies
+# Core
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic[email]==2.10.4
+pydantic-settings==2.7.1
+
+# Database
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.1
+
+# Auth
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.1
+
+# Redis & Celery
+redis[hiredis]==5.2.1
+celery[redis]==5.4.0
+
+# AI/ML (lightweight — no torch/transformers)
+langchain==0.3.14
+langchain-openai==0.3.0
+langgraph==0.2.61
+openai==1.58.1
+
+# Market Data
+yfinance==0.2.51
+httpx==0.28.1
+
+# Vector Store
+qdrant-client==1.12.1
+
+# Technical Analysis
+numpy==2.2.1
+pandas==2.2.3
+scikit-learn==1.6.0
+
+# Security
+cryptography==44.0.0
+
+# Monitoring
+prometheus-client==0.21.1
+structlog==24.4.0
+sentry-sdk[fastapi]==2.20.0
+
+# Testing
+pytest==8.3.4
+pytest-asyncio==0.25.0

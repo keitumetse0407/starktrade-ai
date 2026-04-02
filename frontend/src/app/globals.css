@@ -1,0 +1,353 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  --navy: #0A0E27;
+  --navy-50: #1A1F3D;
+  --electric: #00D4FF;
+  --profit: #00FF88;
+  --loss: #FF3366;
+  --gold: #FFD700;
+  --muted: #8892B0;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 212, 255, 0.3) rgba(10, 14, 39, 0.5);
+}
+
+body {
+  background-color: var(--navy);
+  color: #E6F1FF;
+  font-family: 'Inter', system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+/* ================================
+   GLASSMORPHISM
+   ================================ */
+.glass {
+  background: rgba(26, 31, 61, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 212, 255, 0.08);
+  border-radius: 16px;
+}
+
+.glass-hover:hover {
+  border-color: rgba(0, 212, 255, 0.25);
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.glass-dark {
+  background: rgba(10, 14, 39, 0.8);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-card {
+  background: linear-gradient(135deg, rgba(26, 31, 61, 0.8), rgba(10, 14, 39, 0.6));
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 212, 255, 0.1);
+  border-radius: 16px;
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  border-color: rgba(0, 212, 255, 0.3);
+  box-shadow: 0 8px 40px rgba(0, 212, 255, 0.12);
+  transform: translateY(-2px);
+}
+
+/* ================================
+   BACKGROUNDS
+   ================================ */
+.gradient-bg {
+  background: linear-gradient(135deg, #0A0E27 0%, #1A1F3D 50%, #0A0E27 100%);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+.gradient-mesh {
+  background: 
+    radial-gradient(at 20% 20%, rgba(0, 212, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(at 80% 80%, rgba(0, 255, 136, 0.05) 0%, transparent 50%),
+    radial-gradient(at 50% 50%, rgba(255, 51, 102, 0.03) 0%, transparent 50%),
+    linear-gradient(135deg, #0A0E27 0%, #1A1F3D 50%, #0A0E27 100%);
+}
+
+.grid-bg {
+  background-image: 
+    linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* ================================
+   HERO EFFECTS
+   ================================ */
+.hero-glow {
+  position: relative;
+}
+
+.hero-glow::before {
+  content: '';
+  position: absolute;
+  top: -100px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(0, 212, 255, 0.15) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ================================
+   STATUS INDICATORS
+   ================================ */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  position: relative;
+}
+
+.status-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+.status-dot.active { background-color: var(--profit); }
+.status-dot.active::after { border: 1px solid var(--profit); }
+.status-dot.busy { background-color: var(--electric); }
+.status-dot.busy::after { border: 1px solid var(--electric); }
+.status-dot.idle { background-color: var(--muted); }
+.status-dot.idle::after { display: none; }
+.status-dot.error { background-color: var(--loss); }
+.status-dot.error::after { border: 1px solid var(--loss); }
+
+@keyframes pulse-ring {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(2); }
+}
+
+/* ================================
+   GLOW TEXT
+   ================================ */
+.glow-electric {
+  text-shadow: 0 0 10px rgba(0, 212, 255, 0.5), 0 0 40px rgba(0, 212, 255, 0.2);
+}
+
+.glow-profit {
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5), 0 0 40px rgba(0, 255, 136, 0.2);
+}
+
+.glow-loss {
+  text-shadow: 0 0 10px rgba(255, 51, 102, 0.5);
+}
+
+.glow-gold {
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5), 0 0 40px rgba(255, 215, 0, 0.2);
+}
+
+/* ================================
+   BUTTONS
+   ================================ */
+.btn-primary {
+  @apply px-6 py-3 bg-electric text-navy font-semibold rounded-xl 
+         hover:bg-electric/90 transition-all duration-200 
+         shadow-glow-electric hover:shadow-lg;
+}
+
+.btn-outline {
+  @apply px-6 py-3 border border-white/10 text-white font-medium rounded-xl 
+         hover:border-electric/30 hover:bg-electric/5 transition-all duration-200;
+}
+
+.btn-profit {
+  @apply px-6 py-3 bg-profit text-navy font-semibold rounded-xl 
+         hover:bg-profit/90 transition-all duration-200 
+         shadow-glow-profit;
+}
+
+.btn-ghost {
+  @apply px-4 py-2 text-muted hover:text-white hover:bg-white/5 
+         rounded-lg transition-all duration-200;
+}
+
+/* ================================
+   SCROLLBAR
+   ================================ */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(10, 14, 39, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 212, 255, 0.3);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 212, 255, 0.5);
+}
+
+/* ================================
+   COUNTER / TABULAR NUMBERS
+   ================================ */
+.counter-value {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* ================================
+   GRADIENT TEXT
+   ================================ */
+.text-gradient-electric {
+  background: linear-gradient(135deg, #00D4FF, #00FF88);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ================================
+   SHIMMER LOADING
+   ================================ */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(26, 31, 61, 0.6) 0%,
+    rgba(0, 212, 255, 0.1) 50%,
+    rgba(26, 31, 61, 0.6) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ================================
+   ANIMATIONS
+   ================================ */
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes float-particle {
+  0%, 100% { 
+    transform: translateY(0) translateX(0) rotate(0deg); 
+    opacity: 0;
+  }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { 
+    transform: translateY(-100vh) translateX(50px) rotate(360deg); 
+    opacity: 0;
+  }
+}
+
+/* ================================
+   CHART CONTAINERS
+   ================================ */
+.chart-container {
+  @apply rounded-xl overflow-hidden;
+  background: rgba(10, 14, 39, 0.4);
+  border: 1px solid rgba(0, 212, 255, 0.08);
+}
+
+/* ================================
+   BADGE
+   ================================ */
+.badge {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
+
+.badge-electric {
+  @apply bg-electric/10 text-electric border border-electric/20;
+}
+
+.badge-profit {
+  @apply bg-profit/10 text-profit border border-profit/20;
+}
+
+.badge-loss {
+  @apply bg-loss/10 text-loss border border-loss/20;
+}
+
+.badge-gold {
+  @apply bg-gold/10 text-gold border border-gold/20;
+}
+
+/* ================================
+   INPUT STYLES
+   ================================ */
+.input-stark {
+  @apply w-full bg-navy/50 border border-white/10 rounded-lg px-4 py-3 text-sm 
+         focus:border-electric/50 focus:outline-none focus:ring-1 focus:ring-electric/20
+         placeholder:text-muted/50 transition-all duration-200;
+}
+
+/* ================================
+   TABLE STYLES
+   ================================ */
+.table-stark {
+  @apply w-full;
+}
+
+.table-stark thead tr {
+  @apply border-b border-white/5;
+}
+
+.table-stark th {
+  @apply text-left text-xs text-muted p-4 font-medium;
+}
+
+.table-stark tbody tr {
+  @apply border-b border-white/5 hover:bg-white/5 transition-colors;
+}
+
+.table-stark td {
+  @apply p-4 text-sm;
+}
+
+/* ================================
+   RESPONSIVE
+   ================================ */
+@media (max-width: 768px) {
+  .glass {
+    border-radius: 12px;
+  }
+}
+
+/* ================================
+   SELECTION
+   ================================ */
+::selection {
+  background: rgba(0, 212, 255, 0.3);
+  color: #E6F1FF;
+}
