@@ -568,6 +568,91 @@ async def broker_status():
     except Exception as e:
         return {"connected": False, "error": str(e)}
 
+# ─── PAYFAST PAYMENT GATEWAY ─────────────────────────────────────────────────
+import hashlib
+import urllib.parse
+import urllib.request
+
+PAYFAST_MERCHANT_ID = os.getenv("PAYFAST_MERCHANT_ID", "34411889")
+PAYFAST_MERCHANT_KEY = os.getenv("PAYFAST_MERCHANT_KEY", "3zkl5gmlic8d6")
+PAYFAST_PASSPHRASE = os.getenv("PAYFAST_PASSPHRASE", "")
+PAYFAST_SANDBOX = os.getenv("PAYFAST_SANDBOX", "false").lower() == "true"
+PAYFAST_URL = "https://sandbox.payfast.co.za/eng/process" if PAYFAST_SANDBOX else "https://www.payfast.co.za/eng/process"
+PAYFAST_VALIDATE_URL = "https://www.payfast.co.za/eng/query/validate"
+
+PRICING = {
+    "pro": {"name": "StarkTrade AI Pro", "amount": 499.00, "description": "Pro plan - Monthly", "features": ["Unlimited signals", "Advanced AI analysis", "Priority support", "WhatsApp alerts"]},
+    "enterprise": {"name": "StarkTrade AI Enterprise", "amount": 3299.00, "description": "Enterprise plan - Monthly", "features": ["Everything in Pro", "Custom strategies", "API access", "Dedicated support"]},
+}
+
+def generate_payfast_signature(data: dict, passphrase: str = "") -> str:
+    param_string = ""
+    for key in sorted(data.keys()):
+        value = str(data[key]).strip()
+        if value:
+            param_string += f"{key}={urllib.parse.quote_plus(value)}&"
+    param_string = param_string.rstrip("&")
+    if passphrase:
+        param_string += f"&passphrase={urllib.parse.quote_plus(passphrase)}"
+    return hashlib.md5(param_string.encode()).hexdigest()
+
+@app.get("/api/payfast/plans")
+async def payfast_plans():
+    return {"plans": [{"id": k, "name": v["name"], "amount": v["amount"], "currency": "ZAR", "description": v["description"], "features": v["features"]} for k, v in PRICING.items()]}
+
+@app.post("/api/payfast/create")
+async def payfast_create(request: Request):
+    body = await request.json()
+    plan_id = body.get("plan_id", "").lower()
+    plan = PRICING.get(plan_id)
+    if not plan:
+        raise HTTPException(status_code=400, detail=f"Invalid plan: {plan_id}")
+
+    payment_id = f"stark_{body.get('user_id', '')}_{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    data = {
+        "merchant_id": PAYFAST_MERCHANT_ID,
+        "merchant_key": PAYFAST_MERCHANT_KEY,
+        "return_url": "https://starktrade-ai.vercel.app/payment/success",
+        "cancel_url": "https://starktrade-ai.vercel.app/payment/cancel",
+        "notify_url": "https://starktrade-ai.vercel.app/api/payfast/itn",
+        "name_first": body.get("first_name", ""),
+        "name_last": body.get("last_name", ""),
+        "email_address": body.get("email", ""),
+        "m_payment_id": payment_id,
+        "amount": f"{plan['amount']:.2f}",
+        "item_name": plan["name"],
+        "item_description": plan["description"],
+        "custom_str1": body.get("user_id", ""),
+        "custom_str2": plan_id,
+    }
+    data = {k: v for k, v in data.items() if v}
+    data["signature"] = generate_payfast_signature(data, PAYFAST_PASSPHRASE)
+    payment_url = f"{PAYFAST_URL}?{urllib.parse.urlencode(data)}"
+    return {"success": True, "payment_url": payment_url, "payment_id": payment_id, "amount": plan["amount"], "plan_name": plan["name"]}
+
+@app.post("/api/payfast/itn")
+async def payfast_itn(request: Request):
+    form_data = await request.form()
+    itn_data = {k: v for k, v in form_data.items()}
+    received_sig = itn_data.pop("signature", "")
+    calculated_sig = generate_payfast_signature(itn_data, PAYFAST_PASSPHRASE)
+    if received_sig != calculated_sig:
+        return {"status": "error", "message": "Invalid signature"}
+    # Validate with PayFast
+    try:
+        import httpx
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(PAYFAST_VALIDATE_URL, data=itn_data)
+            if resp.text.strip() != "VALID":
+                return {"status": "error", "message": "Validation failed"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+    payment_status = itn_data.get("payment_status", "")
+    user_id = itn_data.get("custom_str1", "")
+    plan_id = itn_data.get("custom_str2", "")
+    print(f"PayFast ITN: status={payment_status}, user={user_id}, plan={plan_id}")
+    return {"status": "ok"}
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
