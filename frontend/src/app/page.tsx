@@ -10,7 +10,6 @@ import {
   Binary, Layers, Network, Cpu
 } from 'lucide-react';
 import { CountdownTimer, InlineCountdown } from '@/components/CountdownTimer';
-import { FloatingCard, GradientOrb, AnimatedGrid, FloatingParticles, GlowingLine, DepthGlass } from '@/components/AntiGravity';
 
 // ============================================================
 // ANIMATED COUNTER COMPONENT
@@ -191,41 +190,29 @@ function HeroSection() {
           </div>
         </motion.div>
 
-        {/* Dashboard Preview - AntiGravity Floating */}
+        {/* Dashboard Preview */}
         <motion.div
           initial={{ opacity: 0, y: 60 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.3 }}
-          className="mt-20 max-w-6xl mx-auto"
+          className="mt-20 rounded-2xl glass-card p-1 max-w-6xl mx-auto"
         >
-          <FloatingCard intensity={0.5}>
-            <DepthGlass depth={2} className="p-1">
-              <div className="rounded-xl bg-navy-100/50 p-6 md:p-8">
-                {/* Stats Row */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                  <FloatingCard delay={0} intensity={0.3}>
-                    <StatCard label="Portfolio Value" value="$127,845" change="+12.4%" positive icon={<DollarSign className="w-4 h-4" />} />
-                  </FloatingCard>
-                  <FloatingCard delay={0.5} intensity={0.3}>
-                    <StatCard label="Win Rate" value="68.5%" change="+2.1%" positive icon={<Target className="w-4 h-4" />} />
-                  </FloatingCard>
-                  <FloatingCard delay={1} intensity={0.3}>
-                    <StatCard label="Sharpe Ratio" value="2.34" change="Excellent" positive icon={<BarChart3 className="w-4 h-4" />} />
-                  </FloatingCard>
-                  <FloatingCard delay={1.5} intensity={0.3}>
-                    <StatCard label="Max Drawdown" value="-3.2%" change="Protected" positive={false} icon={<Shield className="w-4 h-4" />} />
-                  </FloatingCard>
-                </div>
-                {/* Chart placeholder */}
-                <div className="h-48 md:h-64 rounded-xl bg-navy/50 flex items-center justify-center border border-white/5">
-                  <div className="text-center">
-                    <BarChart3 className="w-10 h-10 text-electric/30 mx-auto mb-2" />
-                    <p className="text-sm text-muted">Live TradingView Chart + Portfolio Overlay</p>
-                  </div>
-                </div>
+          <div className="rounded-xl bg-navy-100/50 p-6 md:p-8">
+            {/* Stats Row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <StatCard label="Portfolio Value" value="$127,845" change="+12.4%" positive icon={<DollarSign className="w-4 h-4" />} />
+              <StatCard label="Win Rate" value="68.5%" change="+2.1%" positive icon={<Target className="w-4 h-4" />} />
+              <StatCard label="Sharpe Ratio" value="2.34" change="Excellent" positive icon={<BarChart3 className="w-4 h-4" />} />
+              <StatCard label="Max Drawdown" value="-3.2%" change="Protected" positive={false} icon={<Shield className="w-4 h-4" />} />
+            </div>
+            {/* Chart placeholder */}
+            <div className="h-48 md:h-64 rounded-xl bg-navy/50 flex items-center justify-center border border-white/5">
+              <div className="text-center">
+                <BarChart3 className="w-10 h-10 text-electric/30 mx-auto mb-2" />
+                <p className="text-sm text-muted">Live TradingView Chart + Portfolio Overlay</p>
               </div>
-            </DepthGlass>
-          </FloatingCard>
+            </div>
+          </div>
         </motion.div>
       </div>
     </section>
@@ -345,8 +332,7 @@ function FeaturesSection() {
   ];
 
   return (
-    <section id="features" className="py-24 px-6 relative">
-      <GlowingLine className="absolute top-0 left-1/4 right-1/4" />
+    <section id="features" className="py-24 px-6">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -368,14 +354,14 @@ function FeaturesSection() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {agents.map((agent, i) => (
-            <FloatingCard key={agent.name} delay={i * 0.3} intensity={0.2}>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="glass-card p-6 group"
-              >
+            <motion.div
+              key={agent.name}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.1 }}
+              className="glass-card p-6 group"
+            >
               <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4
                 ${agent.color === 'electric' ? 'bg-electric/10 text-electric' : ''}
                 ${agent.color === 'profit' ? 'bg-profit/10 text-profit' : ''}
@@ -710,16 +696,16 @@ function PricingPreview() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {tiers.map((tier, i) => (
-            <FloatingCard key={tier.name} delay={i * 0.5} intensity={0.3}>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                className={`glass-card p-8 relative ${
-                  tier.popular ? 'border-electric/30 shadow-glow-electric' : ''
-                }`}
-              >
+          {tiers.map((tier) => (
+            <motion.div
+              key={tier.name}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className={`glass-card p-8 relative ${
+                tier.popular ? 'border-electric/30 shadow-glow-electric' : ''
+              }`}
+            >
               {tier.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-electric text-navy text-xs font-bold rounded-full">
                   MOST POPULAR
@@ -750,8 +736,7 @@ function PricingPreview() {
               >
                 {tier.cta}
               </Link>
-              </motion.div>
-            </FloatingCard>
+            </motion.div>
           ))}
         </div>
       </div>
@@ -1020,29 +1005,19 @@ function Footer() {
 // ============================================================
 export default function LandingPage() {
   return (
-    <div className="min-h-screen gradient-mesh grid-bg relative">
-      {/* AntiGravity Ambient Effects */}
-      <AnimatedGrid />
-      <FloatingParticles count={15} />
-      <GradientOrb color="electric" size={600} position="top-left" delay={0} />
-      <GradientOrb color="profit" size={500} position="bottom-right" delay={2} />
-      <GradientOrb color="gold" size={400} position="top-right" delay={4} />
-      
-      {/* Content */}
-      <div className="relative z-10">
-        <Navbar />
-        <HeroSection />
-        <MetricsBar />
-        <FeaturesSection />
-        <HowItWorks />
-        <PerformanceSection />
-        <RiskSection />
-        <TestimonialsSection />
-        <PricingPreview />
-        <FAQSection />
-        <FinalCTA />
-        <Footer />
-      </div>
+    <div className="min-h-screen gradient-mesh grid-bg">
+      <Navbar />
+      <HeroSection />
+      <MetricsBar />
+      <FeaturesSection />
+      <HowItWorks />
+      <PerformanceSection />
+      <RiskSection />
+      <TestimonialsSection />
+      <PricingPreview />
+      <FAQSection />
+      <FinalCTA />
+      <Footer />
     </div>
   );
 }
