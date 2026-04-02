@@ -4,6 +4,14 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://185.167.97.193:8000/api/:path*',
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

@@ -1,9 +1,7 @@
-// API helper that uses the backend URL from environment
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://185.167.97.193:8000';
+// API helper - uses Vercel rewrite proxy to avoid mixed content issues
+// All /api/* requests are proxied by Vercel to the backend at 185.167.97.193:8000
 
 export async function apiFetch(path: string, options?: RequestInit) {
-  const url = `${API_BASE}${path}`;
-  
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   
   const headers: HeadersInit = {
@@ -12,7 +10,7 @@ export async function apiFetch(path: string, options?: RequestInit) {
     ...((options?.headers as Record<string, string>) || {}),
   };
 
-  return fetch(url, {
+  return fetch(path, {
     ...options,
     headers,
   });
