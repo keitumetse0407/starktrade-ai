@@ -7,6 +7,7 @@ import {
   Shield, Zap, ArrowRight, ArrowLeft, Check, Eye, EyeOff,
   Sparkles, Target, Brain, TrendingUp, Lock, Mail, User, RefreshCw
 } from 'lucide-react';
+import { apiFetch, setAuthToken } from '@/lib/api';
 
 const QUIZ_QUESTIONS = [
   {
@@ -99,9 +100,8 @@ export default function OnboardingPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/v1/auth/register', {
+      const res = await apiFetch('/api/v1/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email,
           password,
@@ -117,11 +117,9 @@ export default function OnboardingPage() {
       }
 
       const tokenData = await res.json();
-      localStorage.setItem('token', tokenData.access_token);
+      setAuthToken(tokenData.access_token);
 
-      const meRes = await fetch('/api/v1/auth/me', {
-        headers: { Authorization: `Bearer ${tokenData.access_token}` },
-      });
+      const meRes = await apiFetch('/api/v1/auth/me');
       const me = await meRes.json();
       if (me.role === 'admin') {
         setIsAdmin(true);
@@ -139,9 +137,8 @@ export default function OnboardingPage() {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/v1/auth/login', {
+      const res = await apiFetch('/api/v1/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
 
@@ -153,11 +150,9 @@ export default function OnboardingPage() {
       }
 
       const tokenData = await res.json();
-      localStorage.setItem('token', tokenData.access_token);
+      setAuthToken(tokenData.access_token);
 
-      const meRes = await fetch('/api/v1/auth/me', {
-        headers: { Authorization: `Bearer ${tokenData.access_token}` },
-      });
+      const meRes = await apiFetch('/api/v1/auth/me');
       const me = await meRes.json();
       if (me.role === 'admin') {
         setIsAdmin(true);
