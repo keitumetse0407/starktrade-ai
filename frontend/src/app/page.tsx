@@ -62,9 +62,12 @@ function Navbar() {
             <Zap className="w-8 h-8 text-electric group-hover:scale-110 transition-transform" />
             <div className="absolute inset-0 w-8 h-8 bg-electric/20 rounded-full blur-lg" />
           </div>
-          <span className="text-xl font-bold tracking-tight">
-            Stark<span className="text-electric">Trade</span> AI
-          </span>
+          <div>
+            <span className="text-xl font-bold tracking-tight">
+              Stark<span className="text-electric">Trade</span> AI
+            </span>
+            <span className="hidden sm:block text-[10px] text-muted -mt-1">by ELEV8 DIGITAL</span>
+          </div>
         </Link>
 
         <div className="hidden md:flex items-center gap-8">
@@ -987,9 +990,10 @@ function Footer() {
             StarkTrade AI is an automated trading tool, not a registered investment advisor.
             Use at your own risk.
           </p>
-          <p className="text-xs text-muted">
-            &copy; 2026 StarkTrade AI. All rights reserved.
-          </p>
+          <div className="text-xs text-muted text-center md:text-right">
+            <p>&copy; 2026 <span className="text-electric font-medium">ELEV8 DIGITAL</span>. All rights reserved.</p>
+            <p className="mt-1">Dennilton, Limpopo, South Africa</p>
+          </div>
         </div>
       </div>
     </footer>
