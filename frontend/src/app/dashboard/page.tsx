@@ -233,7 +233,7 @@ export default function DashboardPage() {
                 isPaperMode={isPaperMode}
                 setIsPaperMode={setIsPaperMode}
                 activeTab={activeTab}
-                setActiveTab={(tab) => { setActiveTab(tab); setSidebarOpen(false); }}
+                setActiveTab={(tab: string) => { setActiveTab(tab); setSidebarOpen(false); }}
                 navItems={NAV_ITEMS}
                 onLogout={handleLogout}
                 isConnected={isConnected}
