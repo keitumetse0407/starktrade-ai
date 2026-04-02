@@ -13,7 +13,7 @@ except ImportError:
     pass
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -359,6 +359,137 @@ async def predictions():
         {"id": "2", "title": "Fed rate cut in Q2 2026?", "category": "Economics", "yes_price": 0.42, "volume": 128500, "status": "open"},
         {"id": "3", "title": "NVDA earnings beat estimates?", "category": "Tech", "yes_price": 0.78, "volume": 67890, "status": "open"},
     ]
+
+# ============================================================
+# AUTOTRADING ROUTES
+# ============================================================
+
+@app.get("/api/v1/autotrading/status")
+async def autotrading_status():
+    from app.agents.autotrading import engine
+    return engine.get_status()
+
+@app.post("/api/v1/autotrading/start")
+async def autotrading_start():
+    from app.agents.autotrading import engine
+    engine.config.enabled = True
+    result = await engine.start()
+    return result
+
+@app.post("/api/v1/autotrading/stop")
+async def autotrading_stop():
+    from app.agents.autotrading import engine
+    result = await engine.stop()
+    return result
+
+@app.get("/api/v1/autotrading/trades")
+async def autotrading_trades(limit: int = 50):
+    from app.agents.autotrading import engine
+    return {"trades": engine.trade_history[-limit:], "total": len(engine.trade_history)}
+
+# ============================================================
+# AGENT COUNCIL ROUTES
+# ============================================================
+
+@app.post("/api/v1/agents/analyze")
+async def agents_analyze(request: Request):
+    """Run AI agent council analysis on a symbol."""
+    from app.agents.trading_agents import run_agent_council
+    body = await request.json()
+    symbol = body.get("symbol", "SPY")
+    market_data = body.get("market_data", {"price": 100, "change": 0})
+    result = await run_agent_council(symbol, market_data)
+    return result
+
+# ============================================================
+# STRIPE/BILLING ROUTES (Mock for now)
+# ============================================================
+
+@app.get("/api/v1/billing/config")
+async def billing_config():
+    stripe_key = os.getenv("STRIPE_SECRET_KEY", "")
+    return {
+        "publishable_key": os.getenv("STRIPE_PUBLISHABLE_KEY", ""),
+        "stripe_configured": bool(stripe_key),
+        "prices": {
+            "pro": {"monthly": 29.99, "price_id": "price_pro_monthly"},
+            "enterprise": {"monthly": 199, "price_id": "price_enterprise_monthly"},
+        }
+    }
+
+@app.post("/api/v1/billing/create-checkout")
+async def create_checkout(request: Request):
+    body = await request.json()
+    plan = body.get("plan", "pro")
+    
+    stripe_key = os.getenv("STRIPE_SECRET_KEY", "")
+    
+    if stripe_key:
+        try:
+            import stripe
+            stripe.api_key = stripe_key
+            
+            price_id = os.getenv("STRIPE_PRO_PRICE_ID", "") if plan == "pro" else os.getenv("STRIPE_ENTERPRISE_PRICE_ID", "")
+            
+            if not price_id:
+                return {"error": "Price ID not configured", "demo_url": f"https://checkout.stripe.com/demo/{plan}"}
+            
+            session = stripe.checkout.Session.create(
+                payment_method_types=["card"],
+                line_items=[{"price": price_id, "quantity": 1}],
+                mode="subscription",
+                success_url="https://starktrade-ai.vercel.app/dashboard?success=true",
+                cancel_url="https://starktrade-ai.vercel.app/pricing",
+            )
+            return {"url": session.url}
+        except Exception as e:
+            return {"error": str(e), "demo_url": f"https://checkout.stripe.com/demo/{plan}"}
+    
+    return {
+        "demo_url": f"https://checkout.stripe.com/demo/{plan}",
+        "message": "Set STRIPE_SECRET_KEY to enable real payments"
+    }
+
+# ============================================================
+# BROKER/ALPACA ROUTES
+# ============================================================
+
+@app.get("/api/v1/broker/status")
+async def broker_status():
+    alpaca_key = os.getenv("ALPACA_API_KEY", "")
+    alpaca_url = os.getenv("ALPACA_BASE_URL", "https://paper-api.alpaca.markets")
+    
+    if not alpaca_key:
+        return {
+            "connected": False,
+            "mode": "not_configured",
+            "message": "Set ALPACA_API_KEY to enable live trading"
+        }
+    
+    try:
+        import httpx
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{alpaca_url}/v2/account",
+                headers={
+                    "APCA-API-KEY-ID": alpaca_key,
+                    "APCA-API-SECRET-KEY": os.getenv("ALPACA_SECRET_KEY", ""),
+                }
+            )
+            
+            if response.status_code == 200:
+                account = response.json()
+                return {
+                    "connected": True,
+                    "mode": "paper" if "paper" in alpaca_url else "live",
+                    "account_status": account.get("status"),
+                    "buying_power": account.get("buying_power"),
+                    "portfolio_value": account.get("portfolio_value"),
+                }
+            else:
+                return {"connected": False, "error": response.text}
+    except Exception as e:
+        return {"connected": False, "error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn
