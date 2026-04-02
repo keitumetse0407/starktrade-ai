@@ -9,6 +9,7 @@ import {
   Users, DollarSign, Target, Activity, Award, Play, Eye,
   Binary, Layers, Network, Cpu
 } from 'lucide-react';
+import { CountdownTimer, InlineCountdown } from '@/components/CountdownTimer';
 
 // ============================================================
 // ANIMATED COUNTER COMPONENT
@@ -674,7 +675,7 @@ function PricingPreview() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-16"
+          className="text-center mb-8"
         >
           <span className="badge badge-electric mb-4">PRICING</span>
           <h2 className="text-4xl md:text-5xl font-bold mb-4">
@@ -685,6 +686,11 @@ function PricingPreview() {
             No credit card needed. No hidden fees. Cancel anytime.
           </p>
         </motion.div>
+
+        {/* Countdown Timer */}
+        <div className="max-w-md mx-auto mb-12">
+          <CountdownTimer showCTA={false} />
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {tiers.map((tier) => (
@@ -703,6 +709,11 @@ function PricingPreview() {
                 </div>
               )}
               <h3 className="text-xl font-bold mb-2">{tier.name}</h3>
+              {tier.popular && (
+                <div className="mb-2">
+                  <InlineCountdown />
+                </div>
+              )}
               <div className="mb-2">
                 <span className="text-4xl font-bold">{tier.price}</span>
                 <span className="text-muted text-sm">{tier.period}</span>

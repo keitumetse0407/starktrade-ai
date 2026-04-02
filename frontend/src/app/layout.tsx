@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ClientProviders } from '@/components/ClientProviders';
 
 export const metadata: Metadata = {
   title: 'StarkTrade AI — Autonomous Trading. Institutional Results.',
@@ -39,7 +40,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen gradient-bg antialiased">
         <ErrorBoundary>
-          {children}
+          <ClientProviders>
+            {children}
+          </ClientProviders>
         </ErrorBoundary>
       </body>
     </html>

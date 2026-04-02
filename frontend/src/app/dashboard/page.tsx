@@ -9,6 +9,7 @@ import {
 import Link from 'next/link';
 import { CommandCenter } from '@/components/dashboard/CommandCenter';
 import { AutopilotControls, AgentsCouncil, TradeHistory, Predictions, Analytics, SettingsPanel } from '@/components/dashboard/DashboardPanels';
+import { ReferralDashboard } from '@/components/ReferralSystem';
 
 // ============================================================
 // MOCK DATA GENERATORS
@@ -211,7 +212,12 @@ export default function DashboardPage() {
             {activeTab === 'trades' && <TradeHistory trades={trades} />}
             {activeTab === 'predictions' && <Predictions />}
             {activeTab === 'analytics' && <Analytics portfolioData={portfolioData} />}
-            {activeTab === 'settings' && <SettingsPanel />}
+            {activeTab === 'settings' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <SettingsPanel />
+                <ReferralDashboard />
+              </div>
+            )}
           </motion.div>
         </AnimatePresence>
       </main>
