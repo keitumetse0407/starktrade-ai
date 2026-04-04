@@ -1,4 +1,5 @@
 """Gold Data Collector - Fetches and cleans XAU/USD data from yfinance"""
+import requests as _req
 import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta
@@ -7,13 +8,28 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Yahoo Finance blocks default Python User-Agent — spoof a real browser
+_yf_session = _req.Session()
+_yf_session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
+    'Upgrade-Insecure-Requests': '1',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+})
+
 
 class GoldDataCollector:
     """Fetches and prepares historical gold price data."""
 
     def __init__(self, symbol: str = "GC=F"):
         self.symbol = symbol
-        self._ticker = yf.Ticker(self.symbol)
+        self._ticker = yf.Ticker(self.symbol, session=_yf_session)
 
     def get_historical_data(self, period: str = "2y", interval: str = "1d") -> pd.DataFrame:
         """

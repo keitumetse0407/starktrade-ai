@@ -1,6 +1,15 @@
 """Market data service."""
 import httpx
 from app.core.config import settings
+import requests as _req
+
+# Yahoo Finance blocks default Python User-Agent — spoof a real browser
+_yf_session = _req.Session()
+_yf_session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+})
 
 
 async def get_ohlcv(db, symbol: str, timeframe: str, limit: int):
@@ -47,7 +56,7 @@ def _fallback_yfinance(symbol: str, timeframe: str, limit: int):
         interval_map = {"1m": "1m", "5m": "5m", "15m": "15m", "1h": "1h", "1d": "1d"}
         period_map = {"1m": "1d", "5m": "5d", "15m": "5d", "1h": "1mo", "1d": "1y"}
 
-        ticker = yf.Ticker(symbol)
+        ticker = yf.Ticker(symbol, session=_yf_session)
         df = ticker.history(
             period=period_map.get(timeframe, "1y"),
             interval=interval_map.get(timeframe, "1d"),
@@ -82,7 +91,7 @@ async def get_market_pulse():
     pulse = {}
     try:
         import yfinance as yf
-        tickers = yf.Tickers(" ".join(indices.values()))
+        tickers = yf.Tickers(" ".join(indices.values()), session=_yf_session)
         for name, symbol in indices.items():
             try:
                 info = tickers.tickers[symbol].fast_info

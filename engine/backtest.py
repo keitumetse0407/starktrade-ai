@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 import pandas as pd
 import numpy as np
+import requests as _req
 import yfinance as yf
 from quant_agent import QuantAgent
 from indicators import TechnicalIndicators
@@ -23,6 +24,13 @@ from datetime import datetime
 import warnings
 
 warnings.filterwarnings("ignore")
+
+# Yahoo Finance blocks default Python User-Agent — spoof a real browser
+_yf_session = _req.Session()
+_yf_session.headers.update({
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+})
 
 # ---------------------------------------------------------------------------
 # Config
@@ -44,7 +52,7 @@ RISK_PER_TRADE = 0.02  # 2% of equity per trade
 def fetch_data():
     """Fetch 2 years of GC=F daily data."""
     print(f"[*] Fetching {PERIOD} of {SYMBOL} daily data from yfinance ...")
-    ticker = yf.Ticker(SYMBOL)
+    ticker = yf.Ticker(SYMBOL, session=_yf_session)
     raw = ticker.history(period=PERIOD, interval="1d")
     if raw.empty:
         print("[!] No data returned. Aborting.")
