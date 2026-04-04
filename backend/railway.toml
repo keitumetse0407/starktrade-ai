@@ -1,16 +1,9 @@
-# StarkTrade AI — Railway Backend Config
-# Deploy: railway up
-
 [build]
 builder = "nixpacks"
+buildCommand = "pip install -r requirements.txt"
 
 [deploy]
+startCommand = "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
 healthcheckPath = "/api/health"
-healthcheckTimeout = 30
-restartPolicyType = "ON_FAILURE"
+restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
-
-[variables]
-PORT = "8000"
-ENVIRONMENT = "production"
-DEBUG = "false"
