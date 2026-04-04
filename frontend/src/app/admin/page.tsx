@@ -49,7 +49,7 @@ function generateUserGrowth() {
   return data;
 }
 
-const COLORS = ['#00D4FF', '#00FF88', '#FF3366', '#FFD700', '#8892B0'];
+const COLORS = ['#3B82F6', '#10B981', '#EF4444', '#F59E0B', '#8892B0'];
 
 interface AdminStats {
   total_users: number;
@@ -152,20 +152,24 @@ export default function AdminPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen gradient-mesh grid-bg flex items-center justify-center px-6">
-        <div className="glass-card p-8 max-w-md w-full text-center">
-          <div className="w-16 h-16 rounded-2xl bg-electric/10 flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-8 h-8 text-electric" />
+      <div className="min-h-screen bg-black relative overflow-hidden">
+        <div className="ambient-orb w-96 h-96 bg-blue-500/10 -top-48 -left-48" />
+        <div className="ambient-orb w-96 h-96 bg-blue-500/5 -bottom-48 -right-48" />
+        <div className="relative z-10 flex items-center justify-center min-h-screen px-6">
+          <div className="glass-panel p-8 max-w-md w-full text-center">
+            <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mx-auto mb-6">
+              <Shield className="w-8 h-8 text-blue-500" />
+            </div>
+            <h2 className="text-2xl font-display font-bold mb-2 text-white">Admin Access</h2>
+            <p className="text-white/60 mb-6 text-sm">Login with an admin account to access this panel.</p>
+            {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+            <Link href="/onboarding" className="cta-button w-full justify-center">
+              Go to Login <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <p className="text-xs text-white/30 mt-6">
+              First time? Register at /onboarding, then manually set role=&apos;admin&apos; in the database.
+            </p>
           </div>
-          <h2 className="text-2xl font-bold mb-2">Admin Access</h2>
-          <p className="text-muted mb-6">Login with an admin account to access this panel.</p>
-          {error && <p className="text-loss text-sm mb-4">{error}</p>}
-          <Link href="/onboarding" className="btn-primary inline-flex items-center gap-2">
-            Go to Login <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <p className="text-xs text-muted mt-4">
-            First time? Register at /onboarding, then manually set role='admin' in the database.
-          </p>
         </div>
       </div>
     );
@@ -178,74 +182,82 @@ export default function AdminPage() {
   const activeUsers = userGrowth[userGrowth.length - 1]?.active || 1823;
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
-      {/* Sidebar */}
-      <aside className="w-full md:w-64 glass border-r border-white/5 p-4 flex flex-col md:min-h-screen">
-        <div className="flex items-center gap-2 mb-8">
-          <Shield className="w-6 h-6 text-loss" />
-          <span className="font-bold">Admin Panel</span>
-        </div>
+    <div className="min-h-screen bg-black relative">
+      {/* Ambient orbs */}
+      <div className="ambient-orb w-[600px] h-[600px] bg-blue-500/5 -top-48 -left-48 animate-float-slow" />
+      <div className="ambient-orb w-[500px] h-[500px] bg-emerald-500/5 -bottom-48 right-0 animate-float-slow-delay" />
 
-        <nav className="flex-1 space-y-1 overflow-x-auto md:overflow-visible">
-          <Link
-            href="/dashboard"
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-muted hover:text-white hover:bg-white/5 transition-all"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Dashboard
-          </Link>
-
-          <div className="border-t border-white/5 my-2 pt-2" />
-
-          <div className="flex md:flex-col gap-1 min-w-max md:min-w-0">
-            {TABS.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-all whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? 'bg-loss/10 text-loss border border-loss/20'
-                      : 'text-muted hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span className="hidden md:inline">{tab.label}</span>
-                </button>
-              );
-            })}
+      <div className="relative z-10 flex flex-col md:flex-row">
+        {/* Sidebar */}
+        <aside className="w-full md:w-64 border-r border-white/[0.06] p-4 flex flex-col md:min-h-screen bg-black/50 backdrop-blur-xl">
+          <div className="flex items-center gap-3 mb-10">
+            <div className="w-9 h-9 rounded-xl bg-red-500/10 flex items-center justify-center">
+              <Shield className="w-5 h-5 text-red-500" />
+            </div>
+            <span className="font-display font-semibold text-white">Admin Panel</span>
           </div>
-        </nav>
-      </aside>
 
-      {/* Main */}
-      <main className="flex-1 p-4 md:p-6 overflow-auto">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          {activeTab === 'overview' && (
-            <OverviewTab
-              stats={stats}
-              mrrData={mrrData}
-              userGrowth={userGrowth}
-              currentMRR={currentMRR}
-              mrrGrowth={mrrGrowth}
-              totalUsers={totalUsers}
-              activeUsers={activeUsers}
-            />
-          )}
-          {activeTab === 'revenue' && <RevenueTab mrrData={mrrData} currentMRR={currentMRR} />}
-          {activeTab === 'users' && (
-            <UsersTab users={users} onUpdateRole={updateUserRole} onToggleActive={toggleUserActive} />
-          )}
-          {activeTab === 'adsense' && <AdSenseTab config={config} onUpdate={updateConfig} />}
-          {activeTab === 'config' && <ConfigTab config={config} onUpdate={updateConfig} />}
-        </motion.div>
-      </main>
+          <nav className="flex-1">
+            <Link
+              href="/dashboard"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm text-white/60 hover:text-white hover:bg-white/[0.02] transition-all mb-4"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden md:inline">Back to Dashboard</span>
+            </Link>
+
+            <div className="section-divider mb-4" />
+
+            <div className="flex md:flex-col gap-1">
+              {TABS.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm transition-all whitespace-nowrap ${
+                      activeTab === tab.id
+                        ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                        : 'text-white/60 hover:text-white hover:bg-white/[0.02]'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="hidden md:inline">{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+        </aside>
+
+        {/* Main */}
+        <main className="flex-1 p-4 md:p-8 overflow-auto">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            {activeTab === 'overview' && (
+              <OverviewTab
+                stats={stats}
+                mrrData={mrrData}
+                userGrowth={userGrowth}
+                currentMRR={currentMRR}
+                mrrGrowth={mrrGrowth}
+                totalUsers={totalUsers}
+                activeUsers={activeUsers}
+              />
+            )}
+            {activeTab === 'revenue' && <RevenueTab mrrData={mrrData} currentMRR={currentMRR} />}
+            {activeTab === 'users' && (
+              <UsersTab users={users} onUpdateRole={updateUserRole} onToggleActive={toggleUserActive} />
+            )}
+            {activeTab === 'adsense' && <AdSenseTab config={config} onUpdate={updateConfig} />}
+            {activeTab === 'config' && <ConfigTab config={config} onUpdate={updateConfig} />}
+          </motion.div>
+        </main>
+      </div>
     </div>
   );
 }
@@ -274,10 +286,10 @@ function OverviewTab({
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Admin Overview</h2>
-        <div className="flex items-center gap-2 text-xs text-muted">
+        <h2 className="text-2xl font-display font-bold text-gradient-silver">Admin Overview</h2>
+        <div className="flex items-center gap-2 text-xs text-white/30">
           <Clock className="w-3 h-3" />
           Last updated: just now
         </div>
@@ -286,13 +298,13 @@ function OverviewTab({
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {overviewStats.map((stat) => (
-          <div key={stat.label} className="glass-card p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-muted">{stat.icon}</span>
-              <span className="text-xs text-muted">{stat.label}</span>
+          <div key={stat.label} className="glass-panel p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-white/30">{stat.icon}</span>
+              <span className="text-xs text-white/60">{stat.label}</span>
             </div>
-            <p className="text-xl md:text-2xl font-bold font-mono">{stat.value}</p>
-            <p className={`text-xs font-mono mt-1 ${stat.positive ? 'text-profit' : 'text-loss'}`}>
+            <p className="text-xl md:text-2xl font-bold stat-mono text-white">{stat.value}</p>
+            <p className={`text-xs stat-mono mt-2 ${stat.positive ? 'text-emerald-500' : 'text-red-500'}`}>
               {stat.change}
             </p>
           </div>
@@ -302,60 +314,64 @@ function OverviewTab({
       {/* Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* MRR Chart */}
-        <div className="glass-card p-6">
-          <h3 className="font-semibold mb-4">Monthly Recurring Revenue</h3>
+        <div className="glass-panel p-6">
+          <h3 className="font-display font-semibold mb-6 text-white">Monthly Recurring Revenue</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={mrrData}>
                 <defs>
                   <linearGradient id="mrrGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#00FF88" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#00FF88" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#10B981" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="month" stroke="#8892B0" fontSize={10} />
-                <YAxis stroke="#8892B0" fontSize={10} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                <XAxis dataKey="month" stroke="rgba(255,255,255,0.3)" fontSize={10} tick={{ fill: 'rgba(255,255,255,0.3)' }} />
+                <YAxis stroke="rgba(255,255,255,0.3)" fontSize={10} tick={{ fill: 'rgba(255,255,255,0.3)' }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
                 <Tooltip
                   contentStyle={{
-                    background: 'rgba(10, 14, 39, 0.9)',
-                    border: '1px solid rgba(0, 255, 136, 0.2)',
-                    borderRadius: '8px',
+                    background: 'rgba(5, 5, 5, 0.95)',
+                    border: '1px solid rgba(16, 185, 129, 0.2)',
+                    borderRadius: '12px',
                     fontSize: '12px',
+                    color: '#fff',
+                    backdropFilter: 'blur(20px)',
                   }}
                   formatter={(value: any) => [`$${value.toLocaleString()}`, 'MRR']}
                 />
-                <Area type="monotone" dataKey="mrr" stroke="#00FF88" fill="url(#mrrGradient)" strokeWidth={2} />
+                <Area type="monotone" dataKey="mrr" stroke="#10B981" fill="url(#mrrGradient)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* User Growth */}
-        <div className="glass-card p-6">
-          <h3 className="font-semibold mb-4">User Growth (30 days)</h3>
+        <div className="glass-panel p-6">
+          <h3 className="font-display font-semibold mb-6 text-white">User Growth (30 days)</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={userGrowth}>
                 <defs>
                   <linearGradient id="userGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#00D4FF" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#00D4FF" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="date" stroke="#8892B0" fontSize={9} interval={4} />
-                <YAxis stroke="#8892B0" fontSize={10} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                <XAxis dataKey="date" stroke="rgba(255,255,255,0.3)" fontSize={9} interval={4} tick={{ fill: 'rgba(255,255,255,0.3)' }} />
+                <YAxis stroke="rgba(255,255,255,0.3)" fontSize={10} tick={{ fill: 'rgba(255,255,255,0.3)' }} />
                 <Tooltip
                   contentStyle={{
-                    background: 'rgba(10, 14, 39, 0.9)',
-                    border: '1px solid rgba(0, 212, 255, 0.2)',
-                    borderRadius: '8px',
+                    background: 'rgba(5, 5, 5, 0.95)',
+                    border: '1px solid rgba(59, 130, 246, 0.2)',
+                    borderRadius: '12px',
                     fontSize: '12px',
+                    color: '#fff',
+                    backdropFilter: 'blur(20px)',
                   }}
                 />
-                <Area type="monotone" dataKey="total" stroke="#00D4FF" fill="url(#userGradient)" strokeWidth={2} name="Total" />
-                <Line type="monotone" dataKey="active" stroke="#00FF88" strokeWidth={1} dot={false} name="Active" />
+                <Area type="monotone" dataKey="total" stroke="#3B82F6" fill="url(#userGradient)" strokeWidth={2} name="Total" />
+                <Line type="monotone" dataKey="active" stroke="#10B981" strokeWidth={1} dot={false} name="Active" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -363,9 +379,9 @@ function OverviewTab({
       </div>
 
       {/* Conversion Funnel */}
-      <div className="glass-card p-6">
-        <h3 className="font-semibold mb-4">Conversion Funnel</h3>
-        <div className="grid grid-cols-5 gap-2">
+      <div className="glass-panel p-6">
+        <h3 className="font-display font-semibold mb-6 text-white">Conversion Funnel</h3>
+        <div className="grid grid-cols-5 gap-3">
           {[
             { stage: 'Visitors', count: '45,230', pct: '100%' },
             { stage: 'Signups', count: '2,847', pct: '6.3%' },
@@ -375,37 +391,37 @@ function OverviewTab({
           ].map((step, i) => (
             <div key={step.stage} className="text-center">
               <div className={`p-4 rounded-xl border ${
-                i === 4 ? 'bg-profit/10 border-profit/20' : 'bg-white/5 border-white/5'
+                i === 4 ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-white/[0.02] border-white/[0.06]'
               }`}>
-                <p className="text-2xl font-bold font-mono">{step.count}</p>
-                <p className="text-xs text-muted mt-1">{step.stage}</p>
-                <p className="text-xs text-electric mt-1">{step.pct}</p>
+                <p className="text-2xl font-bold stat-mono text-white">{step.count}</p>
+                <p className="text-xs text-white/60 mt-2">{step.stage}</p>
+                <p className="text-xs text-blue-400 mt-1 stat-mono">{step.pct}</p>
               </div>
-              {i < 4 && <ChevronDown className="w-4 h-4 text-muted mx-auto mt-2" />}
+              {i < 4 && <div className="flex justify-center mt-2"><ChevronDown className="w-4 h-4 text-white/30" /></div>}
             </div>
           ))}
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="glass-card p-6">
-        <h3 className="font-semibold mb-4">Quick Actions</h3>
+      <div className="glass-panel p-6">
+        <h3 className="font-display font-semibold mb-6 text-white">Quick Actions</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <button className="p-4 rounded-lg border border-white/10 hover:border-electric/30 transition-all text-center">
-            <Download className="w-6 h-6 mx-auto mb-2 text-electric" />
-            <p className="text-sm">Export Data</p>
+          <button className="p-4 rounded-xl border border-white/[0.06] hover:border-blue-500/30 hover:bg-white/[0.02] transition-all text-center group">
+            <Download className="w-6 h-6 mx-auto mb-3 text-blue-500 group-hover:text-blue-400 transition-colors" />
+            <p className="text-sm text-white/60 group-hover:text-white transition-colors">Export Data</p>
           </button>
-          <button className="p-4 rounded-lg border border-white/10 hover:border-profit/30 transition-all text-center">
-            <UserPlus className="w-6 h-6 mx-auto mb-2 text-profit" />
-            <p className="text-sm">Add User</p>
+          <button className="p-4 rounded-xl border border-white/[0.06] hover:border-emerald-500/30 hover:bg-white/[0.02] transition-all text-center group">
+            <UserPlus className="w-6 h-6 mx-auto mb-3 text-emerald-500 group-hover:text-emerald-400 transition-colors" />
+            <p className="text-sm text-white/60 group-hover:text-white transition-colors">Add User</p>
           </button>
-          <button className="p-4 rounded-lg border border-white/10 hover:border-gold/30 transition-all text-center">
-            <Zap className="w-6 h-6 mx-auto mb-2 text-gold" />
-            <p className="text-sm">Send Alert</p>
+          <button className="p-4 rounded-xl border border-white/[0.06] hover:border-amber-500/30 hover:bg-white/[0.02] transition-all text-center group">
+            <Zap className="w-6 h-6 mx-auto mb-3 text-amber-500 group-hover:text-amber-400 transition-colors" />
+            <p className="text-sm text-white/60 group-hover:text-white transition-colors">Send Alert</p>
           </button>
-          <button className="p-4 rounded-lg border border-white/10 hover:border-loss/30 transition-all text-center">
-            <AlertTriangle className="w-6 h-6 mx-auto mb-2 text-loss" />
-            <p className="text-sm">System Status</p>
+          <button className="p-4 rounded-xl border border-white/[0.06] hover:border-red-500/30 hover:bg-white/[0.02] transition-all text-center group">
+            <AlertTriangle className="w-6 h-6 mx-auto mb-3 text-red-500 group-hover:text-red-400 transition-colors" />
+            <p className="text-sm text-white/60 group-hover:text-white transition-colors">System Status</p>
           </button>
         </div>
       </div>
@@ -419,36 +435,36 @@ function OverviewTab({
 function RevenueTab({ mrrData, currentMRR }: { mrrData: any[]; currentMRR: number }) {
   const tierBreakdown = [
     { name: 'Free', value: 65, color: '#8892B0' },
-    { name: 'Pro', value: 28, color: '#00FF88' },
-    { name: 'Enterprise', value: 7, color: '#FFD700' },
+    { name: 'Pro', value: 28, color: '#10B981' },
+    { name: 'Enterprise', value: 7, color: '#F59E0B' },
   ];
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Revenue Analytics</h2>
+    <div className="space-y-8">
+      <h2 className="text-2xl font-display font-bold text-gradient-silver">Revenue Analytics</h2>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="glass-card p-5">
-          <p className="text-xs text-muted mb-1">MRR</p>
-          <p className="text-2xl font-bold font-mono text-profit">${currentMRR.toLocaleString()}</p>
+        <div className="glass-panel p-5">
+          <p className="text-xs text-white/60 mb-1">MRR</p>
+          <p className="text-2xl font-bold stat-mono text-gradient-green">${currentMRR.toLocaleString()}</p>
         </div>
-        <div className="glass-card p-5">
-          <p className="text-xs text-muted mb-1">ARR</p>
-          <p className="text-2xl font-bold font-mono">${(currentMRR * 12).toLocaleString()}</p>
+        <div className="glass-panel p-5">
+          <p className="text-xs text-white/60 mb-1">ARR</p>
+          <p className="text-2xl font-bold stat-mono text-white">${(currentMRR * 12).toLocaleString()}</p>
         </div>
-        <div className="glass-card p-5">
-          <p className="text-xs text-muted mb-1">ARPU</p>
-          <p className="text-2xl font-bold font-mono">${(currentMRR / 312).toFixed(2)}</p>
+        <div className="glass-panel p-5">
+          <p className="text-xs text-white/60 mb-1">ARPU</p>
+          <p className="text-2xl font-bold stat-mono text-white">${(currentMRR / 312).toFixed(2)}</p>
         </div>
-        <div className="glass-card p-5">
-          <p className="text-xs text-muted mb-1">LTV</p>
-          <p className="text-2xl font-bold font-mono text-gold">$847</p>
+        <div className="glass-panel p-5">
+          <p className="text-xs text-white/60 mb-1">LTV</p>
+          <p className="text-2xl font-bold stat-mono text-gradient-gold">$847</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="glass-card p-6">
-          <h3 className="font-semibold mb-4">Revenue by Tier</h3>
+        <div className="glass-panel p-6">
+          <h3 className="font-display font-semibold mb-6 text-white">Revenue by Tier</h3>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -467,60 +483,62 @@ function RevenueTab({ mrrData, currentMRR }: { mrrData: any[]; currentMRR: numbe
                 </Pie>
                 <Tooltip
                   contentStyle={{
-                    background: 'rgba(10, 14, 39, 0.9)',
-                    border: '1px solid rgba(0, 212, 255, 0.2)',
-                    borderRadius: '8px',
+                    background: 'rgba(5, 5, 5, 0.95)',
+                    border: '1px solid rgba(59, 130, 246, 0.2)',
+                    borderRadius: '12px',
                     fontSize: '12px',
+                    color: '#fff',
+                    backdropFilter: 'blur(20px)',
                   }}
                   formatter={(value: any) => [`${value}%`, '']}
                 />
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex justify-center gap-6">
+          <div className="flex justify-center gap-6 mt-4">
             {tierBreakdown.map((t) => (
               <div key={t.name} className="flex items-center gap-2 text-xs">
-                <span className="w-3 h-3 rounded" style={{ backgroundColor: t.color }} />
-                <span className="text-muted">{t.name}</span>
-                <span className="font-mono">{t.value}%</span>
+                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: t.color }} />
+                <span className="text-white/60">{t.name}</span>
+                <span className="stat-mono text-white">{t.value}%</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="glass-card p-6">
-          <h3 className="font-semibold mb-4">Pricing Tiers</h3>
+        <div className="glass-panel p-6">
+          <h3 className="font-display font-semibold mb-6 text-white">Pricing Tiers</h3>
           <div className="space-y-4">
-            <div className="p-4 rounded-xl bg-navy/50 border border-white/5 flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between">
               <div>
-                <p className="font-medium">Free</p>
-                <p className="text-xs text-muted">Paper trading, 3 agents</p>
+                <p className="font-medium text-white/80">Free</p>
+                <p className="text-xs text-white/60">Paper trading, 3 agents</p>
               </div>
               <div className="text-right">
-                <p className="font-mono font-bold">$0</p>
-                <p className="text-xs text-muted">~1,850 users</p>
+                <p className="stat-mono font-bold text-white">$0</p>
+                <p className="text-xs text-white/30">~1,850 users</p>
               </div>
             </div>
-            <div className="p-4 rounded-xl bg-profit/5 border border-profit/10 flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/10 flex items-center justify-between">
               <div>
-                <p className="font-medium text-profit">Pro</p>
-                <p className="text-xs text-muted">Live trading, all agents</p>
+                <p className="font-medium text-emerald-500">Pro</p>
+                <p className="text-xs text-white/60">Live trading, all agents</p>
               </div>
               <div className="text-right">
-                <p className="font-mono font-bold text-profit">$29.99/mo</p>
-                <p className="text-xs text-muted">~797 users</p>
+                <p className="stat-mono font-bold text-emerald-500">$29.99/mo</p>
+                <p className="text-xs text-white/30">~797 users</p>
               </div>
             </div>
-            <div className="p-4 rounded-xl bg-gold/5 border border-gold/10 flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/10 flex items-center justify-between">
               <div>
-                <p className="font-medium text-gold flex items-center gap-2">
+                <p className="font-medium text-amber-500 flex items-center gap-2">
                   <Crown className="w-4 h-4" /> Enterprise
                 </p>
-                <p className="text-xs text-muted">Custom agents, API access</p>
+                <p className="text-xs text-white/60">Custom agents, API access</p>
               </div>
               <div className="text-right">
-                <p className="font-mono font-bold text-gold">$199/mo</p>
-                <p className="text-xs text-muted">~200 users</p>
+                <p className="stat-mono font-bold text-amber-500">$199/mo</p>
+                <p className="text-xs text-white/30">~200 users</p>
               </div>
             </div>
           </div>
@@ -538,91 +556,98 @@ function UsersTab({ users, onUpdateRole, onToggleActive }: {
   onUpdateRole: (id: string, role: string) => void;
   onToggleActive: (id: string) => void;
 }) {
-  const roleColors: Record<string, string> = {
-    admin: 'text-loss border-loss/30 bg-loss/10',
-    enterprise: 'text-gold border-gold/30 bg-gold/10',
-    pro: 'text-profit border-profit/30 bg-profit/10',
-    free: 'text-muted border-white/10 bg-white/5',
+  const roleStyles: Record<string, string> = {
+    admin: 'text-red-400 border-red-500/30 bg-red-500/10',
+    enterprise: 'text-amber-400 border-amber-500/30 bg-amber-500/10',
+    pro: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+    free: 'text-white/60 border-white/10 bg-white/[0.02]',
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">User Management</h2>
+        <h2 className="text-2xl font-display font-bold text-gradient-silver">User Management</h2>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-muted">{users.length} users</span>
-          <button className="btn-primary text-sm flex items-center gap-2">
+          <span className="text-sm text-white/60 stat-mono">{users.length} users</span>
+          <button className="cta-button text-sm px-4 py-2.5 h-auto">
             <UserPlus className="w-4 h-4" /> Add User
           </button>
         </div>
       </div>
 
-      <div className="glass-card overflow-hidden">
+      <div className="glass-panel overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-white/5">
-                <th className="text-left text-xs text-muted p-4">User</th>
-                <th className="text-left text-xs text-muted p-4">Role</th>
-                <th className="text-left text-xs text-muted p-4">Status</th>
-                <th className="text-left text-xs text-muted p-4">Trading</th>
-                <th className="text-left text-xs text-muted p-4">Joined</th>
-                <th className="text-left text-xs text-muted p-4">Last Login</th>
-                <th className="text-right text-xs text-muted p-4">Actions</th>
+              <tr className="border-b border-white/[0.06]">
+                <th className="text-left text-xs text-white/30 font-medium p-4">User</th>
+                <th className="text-left text-xs text-white/30 font-medium p-4">Role</th>
+                <th className="text-left text-xs text-white/30 font-medium p-4">Status</th>
+                <th className="text-left text-xs text-white/30 font-medium p-4">Trading</th>
+                <th className="text-left text-xs text-white/30 font-medium p-4">Joined</th>
+                <th className="text-left text-xs text-white/30 font-medium p-4">Last Login</th>
+                <th className="text-right text-xs text-white/30 font-medium p-4">Actions</th>
               </tr>
             </thead>
             <tbody>
               {users.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-muted">
-                    No users found. Users will appear here after registration.
+                  <td colSpan={7} className="p-12 text-center text-white/30">
+                    <div className="flex flex-col items-center gap-3">
+                      <Users className="w-8 h-8 text-white/10" />
+                      <p className="text-sm">No users found. Users will appear here after registration.</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
                 users.map((user) => (
-                  <tr key={user.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                  <tr key={user.id} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
                     <td className="p-4">
-                      <p className="font-medium text-sm">{user.full_name || user.email}</p>
-                      <p className="text-xs text-muted">{user.email}</p>
+                      <p className="font-medium text-sm text-white">{user.full_name || user.email}</p>
+                      <p className="text-xs text-white/30 stat-mono">{user.email}</p>
                     </td>
                     <td className="p-4">
                       <select
                         value={user.role}
                         onChange={(e) => onUpdateRole(user.id, e.target.value)}
-                        className={`text-xs px-2 py-1 rounded border bg-transparent ${roleColors[user.role] || ''}`}
+                        className={`text-xs px-3 py-1.5 rounded-lg border bg-transparent cursor-pointer ${roleStyles[user.role] || roleStyles.free}`}
                       >
-                        <option value="free">Free</option>
-                        <option value="pro">Pro</option>
-                        <option value="enterprise">Enterprise</option>
-                        <option value="admin">Admin</option>
+                        <option value="free" className="bg-black">Free</option>
+                        <option value="pro" className="bg-black">Pro</option>
+                        <option value="enterprise" className="bg-black">Enterprise</option>
+                        <option value="admin" className="bg-black">Admin</option>
                       </select>
                     </td>
                     <td className="p-4">
-                      <span className={`text-xs px-2 py-0.5 rounded ${
-                        user.is_active ? 'bg-profit/10 text-profit' : 'bg-loss/10 text-loss'
+                      <span className={`text-xs px-3 py-1 rounded-lg ${
+                        user.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
                       }`}>
                         {user.is_active ? 'Active' : 'Disabled'}
                       </span>
                     </td>
                     <td className="p-4">
-                      <span className="text-xs text-muted">
-                        {user.auto_trading_enabled ? 'ON' : 'OFF'}
+                      <span className="text-xs text-white/30">
+                        {user.auto_trading_enabled ? (
+                          <span className="text-emerald-400">Enabled</span>
+                        ) : (
+                          'Disabled'
+                        )}
                       </span>
                     </td>
                     <td className="p-4">
-                      <span className="text-xs text-muted">
+                      <span className="text-xs text-white/30 stat-mono">
                         {user.created_at ? new Date(user.created_at).toLocaleDateString() : '—'}
                       </span>
                     </td>
                     <td className="p-4">
-                      <span className="text-xs text-muted">
+                      <span className="text-xs text-white/30">
                         {user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : 'Never'}
                       </span>
                     </td>
                     <td className="p-4 text-right">
                       <button
                         onClick={() => onToggleActive(user.id)}
-                        className="text-xs text-muted hover:text-white transition-colors"
+                        className="text-xs text-white/30 hover:text-white transition-colors"
                       >
                         {user.is_active ? 'Disable' : 'Enable'}
                       </button>
@@ -662,11 +687,11 @@ function AdSenseTab({ config, onUpdate }: {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <h2 className="text-2xl font-bold">Google AdSense Configuration</h2>
+    <div className="space-y-8 max-w-2xl">
+      <h2 className="text-2xl font-display font-bold text-gradient-silver">Google AdSense Configuration</h2>
 
-      <div className="glass-card p-6">
-        <p className="text-sm text-muted mb-6">
+      <div className="glass-panel p-6">
+        <p className="text-sm text-white/60 mb-8">
           Enter your Google AdSense credentials below. Ads will appear on public pages for free-tier users.
           Pro and Enterprise users see no ads.
         </p>
@@ -679,19 +704,19 @@ function AdSenseTab({ config, onUpdate }: {
             { key: 'adsense_slot_predictions', label: 'Predictions Page Ad Slot', placeholder: '1234567890', desc: 'Ad shown on prediction markets page' },
           ].map((field) => (
             <div key={field.key}>
-              <label className="text-sm font-medium mb-2 block">{field.label}</label>
-              <p className="text-xs text-muted mb-2">{field.desc}</p>
+              <label className="text-sm font-medium text-white/80 mb-2 block">{field.label}</label>
+              <p className="text-xs text-white/30 mb-3">{field.desc}</p>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={localValues[field.key] || ''}
                   onChange={(e) => setLocalValues({ ...localValues, [field.key]: e.target.value })}
                   placeholder={field.placeholder}
-                  className="input-stark flex-1"
+                  className="input-void flex-1"
                 />
                 <button
                   onClick={() => handleSave(field.key)}
-                  className="px-4 py-2 bg-electric/10 border border-electric/30 rounded-lg text-electric text-sm hover:bg-electric/20 transition-all"
+                  className="px-4 py-3 bg-blue-500/10 border border-blue-500/30 rounded-xl text-blue-400 hover:bg-blue-500/20 transition-all"
                 >
                   <Save className="w-4 h-4" />
                 </button>
@@ -701,15 +726,15 @@ function AdSenseTab({ config, onUpdate }: {
         </div>
       </div>
 
-      <div className="glass-card p-6">
-        <h3 className="font-semibold mb-2">How It Works</h3>
-        <ul className="text-sm text-muted space-y-2">
-          <li className="flex items-start gap-2"><span className="text-electric">1.</span> Sign up at google.com/adsense</li>
-          <li className="flex items-start gap-2"><span className="text-electric">2.</span> Get your Publisher ID (ca-pub-XXXXXXXXXXXXXXXX)</li>
-          <li className="flex items-start gap-2"><span className="text-electric">3.</span> Create ad units in AdSense dashboard</li>
-          <li className="flex items-start gap-2"><span className="text-electric">4.</span> Paste the slot IDs above</li>
-          <li className="flex items-start gap-2"><span className="text-electric">5.</span> Ads automatically show to free-tier users</li>
-          <li className="flex items-start gap-2"><span className="text-electric">6.</span> Pro/Enterprise users see no ads</li>
+      <div className="glass-panel p-6">
+        <h3 className="font-display font-semibold mb-4 text-white">How It Works</h3>
+        <ul className="text-sm text-white/60 space-y-3">
+          <li className="flex items-start gap-3"><span className="text-blue-400 stat-mono">1.</span> Sign up at google.com/adsense</li>
+          <li className="flex items-start gap-3"><span className="text-blue-400 stat-mono">2.</span> Get your Publisher ID (ca-pub-XXXXXXXXXXXXXXXX)</li>
+          <li className="flex items-start gap-3"><span className="text-blue-400 stat-mono">3.</span> Create ad units in AdSense dashboard</li>
+          <li className="flex items-start gap-3"><span className="text-blue-400 stat-mono">4.</span> Paste the slot IDs above</li>
+          <li className="flex items-start gap-3"><span className="text-blue-400 stat-mono">5.</span> Ads automatically show to free-tier users</li>
+          <li className="flex items-start gap-3"><span className="text-blue-400 stat-mono">6.</span> Pro/Enterprise users see no ads</li>
         </ul>
       </div>
     </div>
@@ -734,37 +759,37 @@ function ConfigTab({ config, onUpdate }: {
   }, [config]);
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <h2 className="text-2xl font-bold">Site Configuration</h2>
+    <div className="space-y-8 max-w-2xl">
+      <h2 className="text-2xl font-display font-bold text-gradient-silver">Site Configuration</h2>
 
-      <div className="glass-card overflow-hidden">
+      <div className="glass-panel overflow-hidden">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-white/5">
-              <th className="text-left text-xs text-muted p-4">Key</th>
-              <th className="text-left text-xs text-muted p-4">Value</th>
-              <th className="text-right text-xs text-muted p-4">Action</th>
+            <tr className="border-b border-white/[0.06]">
+              <th className="text-left text-xs text-white/30 font-medium p-4">Key</th>
+              <th className="text-left text-xs text-white/30 font-medium p-4">Value</th>
+              <th className="text-right text-xs text-white/30 font-medium p-4">Action</th>
             </tr>
           </thead>
           <tbody>
             {Object.entries(config).map(([key, data]) => (
-              <tr key={key} className="border-b border-white/5">
+              <tr key={key} className="border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors">
                 <td className="p-4">
-                  <p className="text-sm font-mono">{key}</p>
-                  <p className="text-xs text-muted">{data.description}</p>
+                  <p className="text-sm stat-mono text-white">{key}</p>
+                  <p className="text-xs text-white/30 mt-1">{data.description}</p>
                 </td>
                 <td className="p-4">
                   <input
                     type="text"
                     value={localValues[key] || ''}
                     onChange={(e) => setLocalValues({ ...localValues, [key]: e.target.value })}
-                    className="w-full bg-navy/50 border border-white/10 rounded-lg px-3 py-1.5 text-sm font-mono focus:border-electric/50 focus:outline-none"
+                    className="w-full input-void py-2 px-3 text-sm"
                   />
                 </td>
                 <td className="p-4 text-right">
                   <button
                     onClick={() => onUpdate(key, localValues[key] || '')}
-                    className="px-3 py-1.5 bg-electric/10 border border-electric/30 rounded-lg text-electric text-xs hover:bg-electric/20 transition-all"
+                    className="px-3 py-2 bg-blue-500/10 border border-blue-500/30 rounded-xl text-blue-400 hover:bg-blue-500/20 transition-all"
                   >
                     <Save className="w-3 h-3" />
                   </button>
