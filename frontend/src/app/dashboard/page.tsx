@@ -6,13 +6,17 @@ import {
   Activity, BarChart3, Brain, Shield, Settings, TrendingUp, Bell,
   DollarSign, Target, Zap, RefreshCw, LogOut, ChevronRight, Menu, X,
   Sun, Moon, Play, Pause, Download, AlertCircle, Wifi, WifiOff,
-  ArrowUpRight, ArrowDownRight, Clock, Sparkles, Flame, Layers
+  ArrowUpRight, ArrowDownRight, Clock, Sparkles, Flame, Layers,
+  CheckCircle, AlertTriangle
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiFetch, clearAuthToken } from '@/lib/api';
 import { useTheme } from '@/lib/theme';
+import { notify } from '@/lib/toast';
 import { ReferralDashboard } from '@/components/ReferralSystem';
+import { EmptyState, ErrorState, SuccessState } from '@/components/ui';
+import { Skeleton, DashboardSkeleton } from '@/components/ui';
 
 // ============================================================
 // TYPES
@@ -131,7 +135,9 @@ export default function DashboardPage() {
   };
 
   const toggleAutoTrading = async () => {
-    setAutoTrading(!autoTrading);
+    const newState = !autoTrading;
+    setAutoTrading(newState);
+    notify.autopilotToggle(newState);
   };
 
   const handleLogout = () => {
@@ -159,17 +165,8 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className={`min-h-screen gradient-bg grid-bg flex items-center justify-center`}>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
-          <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mx-auto mb-4">
-            <Zap className="w-8 h-8 text-accent animate-pulse" />
-          </div>
-          <p className="text-secondary">Initializing systems...</p>
-        </motion.div>
+      <div className="min-h-screen gradient-bg grid-bg p-4 md:p-8 pt-20 md:pt-8">
+        <DashboardSkeleton />
       </div>
     );
   }
@@ -285,20 +282,6 @@ export default function DashboardPage() {
 
         {/* Content Area */}
         <div className="p-4 md:p-8">
-          {error && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 rounded-2xl bg-loss/10 border border-loss/20 text-loss text-sm flex items-center gap-3"
-            >
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              <span className="flex-1">{error}</span>
-              <button onClick={loadData} className="px-3 py-1.5 rounded-lg bg-loss/20 text-xs font-medium hover:bg-loss/30">
-                Retry
-              </button>
-            </motion.div>
-          )}
-
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -533,10 +516,14 @@ function CommandCenter({ portfolio, trades, agents, predictions, autoTrading, on
             </button>
           </div>
           {trades.length === 0 ? (
-            <div className="text-center py-12">
-              <Sparkles className="w-12 h-12 text-secondary/20 mx-auto mb-3" />
-              <p className="text-sm text-secondary">No trades yet — activate autopilot to begin</p>
-            </div>
+            <EmptyState
+              icon={Sparkles}
+              title="No trades yet"
+              description="Activate autopilot to let your AI agents start finding and executing trades."
+              actionLabel="Activate Autopilot"
+              onAction={() => onTabChange('autopilot')}
+              variant="sm"
+            />
           ) : (
             <div className="space-y-2">
               {trades.slice(0, 5).map((trade: any) => (
@@ -578,10 +565,12 @@ function CommandCenter({ portfolio, trades, agents, predictions, autoTrading, on
             </button>
           </div>
           {predictions.length === 0 ? (
-            <div className="text-center py-8">
-              <Flame className="w-10 h-10 text-secondary/20 mx-auto mb-2" />
-              <p className="text-xs text-secondary">Loading markets...</p>
-            </div>
+            <EmptyState
+              icon={Flame}
+              title="No predictions loaded"
+              description="Prediction markets will appear here once the system processes market data."
+              variant="sm"
+            />
           ) : (
             <div className="space-y-4">
               {predictions.slice(0, 3).map((p: any) => (
@@ -654,11 +643,12 @@ function PredictionsPanel({ predictions }: { predictions: Prediction[] }) {
       </div>
 
       {predictions.length === 0 ? (
-        <div className="glass-card p-16 text-center">
-          <Flame className="w-16 h-16 text-secondary/20 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No Markets Yet</h3>
-          <p className="text-sm text-secondary">Prediction markets will appear here.</p>
-        </div>
+        <EmptyState
+          icon={Flame}
+          title="No prediction markets"
+          description="Prediction markets are being prepared. Check back soon for opportunities to bet on outcomes."
+          variant="lg"
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {predictions.map((p) => (
@@ -714,6 +704,7 @@ function AutopilotPanel({ autoTrading, onToggle }: any) {
     await new Promise(r => setTimeout(r, 1000));
     setSaving(false);
     setSaved(true);
+    notify.settingsSaved();
     setTimeout(() => setSaved(false), 2000);
   };
 
@@ -801,7 +792,14 @@ function TradesPanel({ trades }: any) {
         <button onClick={handleExport} disabled={trades.length === 0} className="btn-outline text-sm flex items-center gap-2"><Download className="w-4 h-4" /> Export CSV</button>
       </div>
       {trades.length === 0 ? (
-        <div className="glass-card p-16 text-center"><Activity className="w-16 h-16 text-secondary/20 mx-auto mb-4" /><h3 className="text-lg font-semibold mb-2">No Trades Yet</h3></div>
+        <EmptyState
+          icon={Activity}
+          title="No trade history"
+          description="Your executed trades will appear here. Start autopilot to see your first trades."
+          actionLabel="Go to Autopilot"
+          onAction={() => {}}
+          variant="lg"
+        />
       ) : (
         <div className="glass-card overflow-hidden">
           <table className="w-full text-sm">

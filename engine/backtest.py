@@ -1,0 +1,430 @@
+"""
+Walk-Forward Backtest for QuantAgent on GC=F (Gold Futures)
+=============================================================
+- 2 years of daily data from yfinance
+- Walk-forward: train on first 80%, predict next day, retrain every 60 days
+- Trade on BUY/SELL signals with confidence > 0.55
+- SL = 1.5x ATR, TP1 = 1.5x ATR, TP2 = 3.0x ATR
+- Reports: win rate, total return, max drawdown, Sharpe, avg R multiple, total trades
+- Compare vs buy-and-hold baseline
+"""
+import sys
+import os
+
+# Make sure we can import engine modules
+sys.path.insert(0, os.path.dirname(__file__))
+
+import pandas as pd
+import numpy as np
+import yfinance as yf
+from quant_agent import QuantAgent
+from indicators import TechnicalIndicators
+from datetime import datetime
+import warnings
+
+warnings.filterwarnings("ignore")
+
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
+SYMBOL = "GC=F"
+PERIOD = "2y"
+CONFIDENCE_THRESHOLD = 0.55
+RETRAIN_EVERY = 60  # trading days
+INITIAL_CAPITAL = 100_000.0
+SL_MULT = 1.5       # Stop Loss = 1.5x ATR
+TP1_MULT = 1.5      # Take Profit 1 = 1.5x ATR
+TP2_MULT = 3.0      # Take Profit 2 = 3.0x ATR
+RISK_PER_TRADE = 0.02  # 2% of equity per trade
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def fetch_data():
+    """Fetch 2 years of GC=F daily data."""
+    print(f"[*] Fetching {PERIOD} of {SYMBOL} daily data from yfinance ...")
+    ticker = yf.Ticker(SYMBOL)
+    raw = ticker.history(period=PERIOD, interval="1d")
+    if raw.empty:
+        print("[!] No data returned. Aborting.")
+        sys.exit(1)
+
+    df = raw.rename(columns={
+        "Open": "open", "High": "high", "Low": "low",
+        "Close": "close", "Volume": "volume",
+    })
+    df.index = pd.to_datetime(df.index)
+    needed = ["open", "high", "low", "close", "volume"]
+    for col in needed:
+        if col not in df.columns:
+            df[col] = 0.0
+    df = df[needed].dropna(subset=["close"])
+    df = df.copy()
+    print(f"[+] Got {len(df)} trading days  ({df.index[0].date()} -> {df.index[-1].date()})")
+    return df
+
+
+def max_drawdown(equity_curve):
+    """Calculate max drawdown from equity curve."""
+    peak = equity_curve.cummax()
+    drawdown = (equity_curve - peak) / peak
+    return drawdown.min()
+
+
+def sharpe_ratio(daily_returns, risk_free_rate=0.04):
+    """Annualised Sharpe ratio."""
+    if daily_returns.std() == 0:
+        return 0.0
+    excess = daily_returns.mean() - risk_free_rate / 252
+    return (excess / daily_returns.std()) * np.sqrt(252)
+
+
+# ---------------------------------------------------------------------------
+# Walk-forward backtest
+# ---------------------------------------------------------------------------
+
+def run_backtest():
+    raw_data = fetch_data()
+
+    # Calculate indicators on the full dataset first (so we always have them)
+    print("[*] Calculating technical indicators ...")
+    df = TechnicalIndicators.calculate_all(raw_data)
+    df = df.dropna(subset=["close", "atr_14", "rsi_14", "macd_histogram"]).copy()
+    print(f"[+] {len(df)} rows with clean indicators.")
+
+    n = len(df)
+    # Walk-forward start: need enough data for indicators + initial 80% train
+    # Indicators need ~200 bars for ma_200; walk-forward starts at 80% of data
+    train_start = 200  # minimum bars for stable indicators
+    initial_train_end = int(n * 0.8)
+
+    if initial_train_end <= train_start:
+        print(f"[!] Not enough data. Need > {train_start} bars, have {n}.")
+        sys.exit(1)
+
+    print(f"[*] Walk-forward: training window [{train_start} : {initial_train_end}], "
+          f"then predict day-by-day, retrain every {RETRAIN_EVERY} days")
+
+    agent = QuantAgent()
+
+    # --- Trade log ---
+    trades = []          # list of dicts
+    equity = INITIAL_CAPITAL
+    equity_curve = []    # equity at end of each day
+    position = None      # None or dict with trade details
+    daily_returns = []   # daily P&L as fraction of equity
+
+    last_train_end = None  # track when we last retrained
+
+    print("[*] Starting walk-forward backtest ...")
+
+    for i in range(initial_train_end, n):
+        # ---- Retraining logic ----
+        # Train on data up to this point, but only retrain every RETRAIN_EVERY days
+        # or on the very first iteration
+        if last_train_end is None or (i - last_train_end) >= RETRAIN_EVERY:
+            train_data = df.iloc[max(0, i - 200):i]  # rolling 200-bar lookback for training
+            result = agent.train(train_data)
+            last_train_end = i
+            acc = result.get("random_forest_accuracy", "?")
+            gb_acc = result.get("gradient_boosting_accuracy", "?")
+            # Uncomment below for verbose training log:
+            # print(f"  [TRAIN] day {i} ({df.index[i].date()}): RF={acc}, GB={gb_acc}")
+
+        # ---- Prediction ----
+        # Use data up to (but not including) day i for prediction
+        historical = df.iloc[:i + 1]
+        prediction = agent.predict(historical)
+
+        if prediction is None:
+            equity_curve.append(equity)
+            daily_returns.append(0.0)
+            continue
+
+        signal = prediction["signal"]
+        confidence = prediction["confidence"]
+        current_bar = df.iloc[i]
+        current_close = current_bar["close"]
+        current_atr = current_bar.get("atr_14", 0)
+
+        # ---- Position management ----
+        # Check if existing position hits SL / TP
+        if position is not None:
+            pos = position
+            sl = pos["sl"]
+            tp1 = pos["tp1"]
+            tp2 = pos["tp2"]
+            entry = pos["entry"]
+            direction = pos["direction"]  # "long" or "short"
+
+            # For longs: SL below entry, TP above
+            # For shorts: SL above entry, TP below
+            if direction == "long":
+                hit_sl = current_bar["low"] <= sl
+                hit_tp1 = current_bar["high"] >= tp1
+                hit_tp2 = current_bar["high"] >= tp2
+            else:
+                hit_sl = current_bar["high"] >= sl
+                hit_tp1 = current_bar["low"] <= tp1
+                hit_tp2 = current_bar["low"] <= tp2
+
+            if hit_sl:
+                # Stop loss hit
+                pnl = pos["size"] * (sl - entry) if direction == "long" else pos["size"] * (entry - sl)
+                r_mult = -1.0  # SL is exactly -1R by construction
+                trades.append({
+                    "date": str(df.index[i].date()),
+                    "direction": direction,
+                    "entry": round(entry, 2),
+                    "exit": round(sl, 2),
+                    "exit_reason": "SL",
+                    "pnl": round(pnl, 2),
+                    "r_multiple": round(r_mult, 2),
+                })
+                equity += pnl
+                position = None
+
+            elif hit_tp2:
+                # Hit TP2 (full position)
+                exit_price = tp2 if direction == "long" else entry - (tp2 - entry)
+                pnl = pos["size"] * (exit_price - entry) if direction == "long" else pos["size"] * (entry - exit_price)
+                r_mult = TP2_MULT
+                trades.append({
+                    "date": str(df.index[i].date()),
+                    "direction": direction,
+                    "entry": round(entry, 2),
+                    "exit": round(exit_price, 2),
+                    "exit_reason": "TP2",
+                    "pnl": round(pnl, 2),
+                    "r_multiple": round(r_mult, 2),
+                })
+                equity += pnl
+                position = None
+
+            elif hit_tp1 and not pos.get("tp1_hit", False):
+                # Partial profit: close 50% at TP1, move SL to breakeven
+                half_size = pos["size"] / 2
+                exit_price = tp1 if direction == "long" else entry - (tp1 - entry)
+                pnl = half_size * (exit_price - entry) if direction == "long" else half_size * (entry - exit_price)
+                r_mult = TP1_MULT
+                trades.append({
+                    "date": str(df.index[i].date()),
+                    "direction": direction,
+                    "entry": round(entry, 2),
+                    "exit": round(exit_price, 2),
+                    "exit_reason": "TP1 (partial)",
+                    "pnl": round(pnl, 2),
+                    "r_multiple": round(r_mult, 2),
+                })
+                equity += pnl
+                # Remaining half: move SL to breakeven
+                pos["sl"] = entry  # breakeven
+                pos["tp1_hit"] = True
+                pos["size"] = half_size
+                position = pos
+
+        # ---- Open new position on signal ----
+        if position is None and confidence > CONFIDENCE_THRESHOLD and current_atr > 0:
+            risk_amount = equity * RISK_PER_TRADE
+            r_value = current_atr  # 1R = 1 ATR
+
+            if signal == "BUY":
+                sl = current_close - SL_MULT * current_atr
+                tp1 = current_close + TP1_MULT * current_atr
+                tp2 = current_close + TP2_MULT * current_atr
+                size = risk_amount / r_value if r_value > 0 else 0
+                position = {
+                    "direction": "long",
+                    "entry": current_close,
+                    "sl": sl,
+                    "tp1": tp1,
+                    "tp2": tp2,
+                    "size": size,
+                    "tp1_hit": False,
+                }
+
+            elif signal == "SELL":
+                sl = current_close + SL_MULT * current_atr
+                tp1 = current_close - TP1_MULT * current_atr
+                tp2 = current_close - TP2_MULT * current_atr
+                size = risk_amount / r_value if r_value > 0 else 0
+                position = {
+                    "direction": "short",
+                    "entry": current_close,
+                    "sl": sl,
+                    "tp1": tp1,
+                    "tp2": tp2,
+                    "size": size,
+                    "tp1_hit": False,
+                }
+
+        # --- End of day equity tracking ---
+        equity_curve.append(equity)
+        if len(equity_curve) >= 2:
+            ret = (equity_curve[-1] - equity_curve[-2]) / equity_curve[-2] if equity_curve[-2] > 0 else 0
+        else:
+            ret = 0.0
+        daily_returns.append(ret)
+
+    # --- Close any open position at end of data ---
+    if position is not None:
+        exit_price = df.iloc[-1]["close"]
+        pnl = position["size"] * (exit_price - position["entry"]) if position["direction"] == "long" \
+            else position["size"] * (position["entry"] - exit_price)
+        r_mult = (exit_price - position["entry"]) / (SL_MULT * df.iloc[-1]["atr_14"]) if position["direction"] == "long" \
+            else (position["entry"] - exit_price) / (SL_MULT * df.iloc[-1]["atr_14"])
+        trades.append({
+            "date": str(df.index[-1].date()),
+            "direction": position["direction"],
+            "entry": round(position["entry"], 2),
+            "exit": round(exit_price, 2),
+            "exit_reason": "EOB (close)",
+            "pnl": round(pnl, 2),
+            "r_multiple": round(r_mult, 2),
+        })
+        equity += pnl
+
+    # -----------------------------------------------------------------------
+    # Results
+    # -----------------------------------------------------------------------
+    print("\n" + "=" * 70)
+    print("  BACKTEST RESULTS — QuantAgent Walk-Forward on GC=F")
+    print("=" * 70)
+
+    total_trades = len(trades)
+    if total_trades == 0:
+        print("\n[!] No trades generated. Signal threshold too high or model not confident enough.")
+        return
+
+    trades_df = pd.DataFrame(trades)
+
+    # Win rate
+    winning = trades_df[trades_df["pnl"] > 0]
+    losing = trades_df[trades_df["pnl"] <= 0]
+    win_rate = len(winning) / total_trades * 100
+
+    # Total return
+    total_pnl = trades_df["pnl"].sum()
+    total_return_pct = (total_pnl / INITIAL_CAPITAL) * 100
+    final_equity = INITIAL_CAPITAL + total_pnl
+
+    # Max drawdown
+    eq = pd.Series(equity_curve)
+    mdd = max_drawdown(eq) * 100
+
+    # Sharpe ratio
+    dr = pd.Series(daily_returns)
+    sharpe = sharpe_ratio(dr)
+
+    # Avg R multiple
+    avg_r = trades_df["r_multiple"].mean()
+
+    # Profit factor
+    gross_profit = winning["pnl"].sum() if len(winning) > 0 else 0
+    gross_loss = abs(losing["pnl"].sum()) if len(losing) > 0 else 0
+    profit_factor = gross_profit / gross_loss if gross_loss > 0 else float("inf")
+
+    # Avg win / avg loss
+    avg_win = winning["pnl"].mean() if len(winning) > 0 else 0
+    avg_loss = losing["pnl"].mean() if len(losing) > 0 else 0
+
+    # Consecutive losses
+    streak = 0
+    max_losing_streak = 0
+    for _, row in trades_df.iterrows():
+        if row["pnl"] <= 0:
+            streak += 1
+            max_losing_streak = max(max_losing_streak, streak)
+        else:
+            streak = 0
+
+    # --- Print strategy metrics ---
+    print(f"\n  Period:          {df.index[initial_train_end].date()} -> {df.index[-1].date()}")
+    print(f"  Initial Capital:  ${INITIAL_CAPITAL:,.2f}")
+    print(f"  Final Equity:     ${final_equity:,.2f}")
+    print(f"  Total Return:     {total_return_pct:+.2f}%")
+    print(f"  Total P&L:        ${total_pnl:+,.2f}")
+    print(f"")
+    print(f"  Total Trades:     {total_trades}")
+    print(f"  Win Rate:         {win_rate:.1f}%  ({len(winning)}W / {len(losing)}L)")
+    print(f"  Avg Win:          ${avg_win:+,.2f}")
+    print(f"  Avg Loss:         ${avg_loss:+,.2f}")
+    print(f"  Profit Factor:    {profit_factor:.2f}")
+    print(f"  Avg R Multiple:   {avg_r:+.3f}R")
+    print(f"")
+    print(f"  Max Drawdown:     {mdd:.2f}%")
+    print(f"  Sharpe Ratio:     {sharpe:.3f}")
+    print(f"  Max Losing Streak: {max_losing_streak}")
+
+    # Direction breakdown
+    long_trades = trades_df[trades_df["direction"] == "long"]
+    short_trades = trades_df[trades_df["direction"] == "short"]
+    print(f"\n  Direction Breakdown:")
+    print(f"    Long  trades: {len(long_trades):>4d}  |  win rate: {len(long_trades[long_trades['pnl']>0])/max(len(long_trades),1)*100:.1f}%")
+    print(f"    Short trades: {len(short_trades):>4d}  |  win rate: {len(short_trades[short_trades['pnl']>0])/max(len(short_trades),1)*100:.1f}%")
+
+    # Exit reason breakdown
+    print(f"\n  Exit Reason Breakdown:")
+    for reason, grp in trades_df.groupby("exit_reason"):
+        wr = len(grp[grp["pnl"] > 0]) / len(grp) * 100
+        print(f"    {reason:<16s}  {len(grp):>4d} trades  |  win rate: {wr:.1f}%  |  avg R: {grp['r_multiple'].mean():+.3f}")
+
+    # -----------------------------------------------------------------------
+    # Buy-and-Hold Baseline
+    # -----------------------------------------------------------------------
+    print("\n" + "-" * 70)
+    print("  BUY-AND-HOLD BASELINE")
+    print("-" * 70)
+
+    bh_entry = df.iloc[initial_train_end]["close"]
+    bh_exit = df.iloc[-1]["close"]
+    bh_return = (bh_exit - bh_entry) / bh_entry * 100
+    bh_pnl = INITIAL_CAPITAL * (bh_exit - bh_entry) / bh_entry
+
+    print(f"\n  Entry Price:      ${bh_entry:,.2f}  ({df.index[initial_train_end].date()})")
+    print(f"  Exit Price:       ${bh_exit:,.2f}  ({df.index[-1].date()})")
+    print(f"  Buy-and-Hold Return: {bh_return:+.2f}%")
+    print(f"  Buy-and-Hold P&L:    ${bh_pnl:+,.2f}")
+
+    # Buy-and-hold Sharpe (using same daily returns of the asset)
+    asset_returns = df["close"].pct_change().iloc[initial_train_end:]
+    bh_sharpe = sharpe_ratio(asset_returns)
+
+    # Buy-and-hold max drawdown
+    bh_prices = df["close"].iloc[initial_train_end:]
+    bh_peak = bh_prices.cummax()
+    bh_dd = ((bh_prices - bh_peak) / bh_peak).min() * 100
+
+    print(f"  Buy-and-Hold Sharpe:   {bh_sharpe:.3f}")
+    print(f"  Buy-and-Hold Max DD:   {bh_dd:.2f}%")
+
+    # -----------------------------------------------------------------------
+    # Comparison
+    # -----------------------------------------------------------------------
+    print("\n" + "=" * 70)
+    print("  STRATEGY vs BUY-AND-HOLD")
+    print("=" * 70)
+
+    outperform = total_return_pct - bh_return
+    print(f"\n  {'Metric':<25s}  {'Strategy':>12s}  {'Buy-and-Hold':>12s}  {'Diff':>10s}")
+    print(f"  {'-'*25}  {'-'*12}  {'-'*12}  {'-'*10}")
+    print(f"  {'Total Return':<25s}  {total_return_pct:>11.2f}%  {bh_return:>11.2f}%  {outperform:>+9.2f}%")
+    print(f"  {'Sharpe Ratio':<25s}  {sharpe:>12.3f}  {bh_sharpe:>12.3f}")
+    print(f"  {'Max Drawdown':<25s}  {mdd:>11.2f}%  {bh_dd:>11.2f}%")
+    print(f"  {'Win Rate':<25s}  {win_rate:>11.1f}%  {'N/A':>12s}")
+    print(f"  {'Avg R Multiple':<25s}  {avg_r:>12.3f}R  {'N/A':>12s}")
+
+    verdict = "OUTPERFORMED" if outperform > 0 else "UNDERPERFORMED"
+    print(f"\n  Verdict: Strategy {verdict} buy-and-hold by {abs(outperform):.2f}%")
+
+    if sharpe > bh_sharpe:
+        print(f"  Risk-adjusted: Strategy has BETTER Sharpe ratio")
+    else:
+        print(f"  Risk-adjusted: Buy-and-hold has BETTER Sharpe ratio")
+
+    print("=" * 70)
+
+
+if __name__ == "__main__":
+    run_backtest()

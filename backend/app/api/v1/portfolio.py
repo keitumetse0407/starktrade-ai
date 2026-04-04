@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.session import get_db
-from app.db.models import User, Portfolio, Position, Trade
+from app.db.models import User, Portfolio, Trade
 from app.core.auth import get_current_user
 from app.schemas.schemas import PortfolioResponse
 

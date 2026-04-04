@@ -12,7 +12,7 @@ import json
 import os
 from datetime import datetime
 
-from payfast import (
+from app.payfast import (
     PayFastConfig,
     create_payment_data,
     generate_payment_url,
@@ -26,6 +26,32 @@ from payfast import (
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/payfast", tags=["payments"])
+
+
+async def _activate_subscription(user_id: str, plan_id: str, amount: float):
+    """Upgrade user role and log subscription activation."""
+    from app.db.session import async_session_factory
+    from app.db.models import User
+    from sqlalchemy import select
+
+    role_map = {"pro": "pro", "enterprise": "enterprise"}
+    new_role = role_map.get(plan_id, "pro")
+
+    async with async_session_factory() as db:
+        result = await db.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if user:
+            old_role = user.role
+            user.role = new_role
+            logger.info(f"Upgraded user {user_id} ({user.email}) from '{old_role}' to '{new_role}' — R{amount:.2f}")
+            await db.commit()
+        else:
+            logger.error(f"Subscription activation: user {user_id} not found")
+
+
+async def _handle_cancellation(user_id: str, plan_id: str):
+    """Log cancelled payment — no state change since user wasn't upgraded yet."""
+    logger.warning(f"Payment cancelled for user {user_id}, plan {plan_id}")
 
 # ─── CONFIG (load from env vars) ────────────────────────────────────────────
 
@@ -159,12 +185,11 @@ async def handle_itn(request: Request):
 
         if payment_status == "COMPLETE":
             logger.info(f"Payment COMPLETE: user={user_id}, plan={plan_id}, amount={parsed['amount_gross']}")
-            # TODO: Update user subscription in database
-            # await update_user_subscription(user_id, plan_id, "active")
+            await _activate_subscription(user_id, plan_id, float(parsed.get("amount_gross", 0)))
 
         elif payment_status == "CANCELLED":
             logger.info(f"Payment CANCELLED: user={user_id}, plan={plan_id}")
-            # TODO: Handle cancellation
+            await _handle_cancellation(user_id, plan_id)
 
         else:
             logger.info(f"Payment status: {payment_status} for user={user_id}")

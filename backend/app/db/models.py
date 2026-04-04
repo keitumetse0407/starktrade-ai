@@ -172,3 +172,73 @@ class SiteConfig(Base):
     description = Column(Text)
     updated_by = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"))
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+
+class PredictionPosition(Base):
+    __tablename__ = "prediction_positions"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    market_id = Column(UUID(as_uuid=True), ForeignKey("prediction_markets.id", ondelete="CASCADE"), nullable=False, index=True)
+    side = Column(String(10), nullable=False)  # "yes" or "no"
+    quantity = Column(Numeric(15, 2), nullable=False)
+    avg_price = Column(Numeric(10, 4), nullable=False)
+    current_price = Column(Numeric(10, 4), nullable=False, default=0.5)
+    pnl = Column(Numeric(15, 2), default=0)
+    status = Column(String(20), nullable=False, default="open", index=True)  # open, closed, resolved
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    closed_at = Column(DateTime(timezone=True))
+
+
+class Signal(Base):
+    __tablename__ = "signals"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    symbol = Column(String(50), nullable=False, index=True)  # e.g. "XAUUSD"
+    direction = Column(String(20), nullable=False, index=True)  # BUY, SELL, WATCH, NO_TRADE
+    entry_price = Column(Numeric(15, 8))
+    stop_loss = Column(Numeric(15, 8))
+    take_profit_1 = Column(Numeric(15, 8))
+    take_profit_2 = Column(Numeric(15, 8))
+    position_size_pct = Column(Numeric(8, 4))
+    risk_amount = Column(Numeric(15, 2))
+    rrr = Column(Numeric(8, 4))
+    confidence = Column(Numeric(5, 4))
+    consensus_score = Column(String(20))  # e.g. "2B/0S/2N"
+    regime = Column(String(30))  # trending, breakout, range, rotational
+    trend_direction = Column(String(20))  # bullish, bearish, neutral
+    agent_votes = Column(JSONB)  # Full vote breakdown
+    rationale = Column(Text)
+    invalidation = Column(Text)
+    message_text = Column(Text)  # Telegram-formatted message
+    status = Column(String(20), nullable=False, default="generated", index=True)
+    # generated → sent → active → closed_win / closed_loss
+    delivered_via = Column(String(20))  # telegram, whatsapp, api, email
+    telegram_message_id = Column(String(50))
+    outcome_pnl_pct = Column(Numeric(8, 4))  # Actual result after trade closes
+    outcome_notes = Column(Text)
+    generated_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)
+    sent_at = Column(DateTime(timezone=True))
+    closed_at = Column(DateTime(timezone=True))
+
+
+class SignalPerformance(Base):
+    __tablename__ = "signal_performance"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    total_signals = Column(Integer, nullable=False, default=0)
+    buy_signals = Column(Integer, nullable=False, default=0)
+    sell_signals = Column(Integer, nullable=False, default=0)
+    watch_signals = Column(Integer, nullable=False, default=0)
+    no_trade_signals = Column(Integer, nullable=False, default=0)
+    wins = Column(Integer, nullable=False, default=0)
+    losses = Column(Integer, nullable=False, default=0)
+    win_rate_pct = Column(Numeric(5, 2))
+    avg_win_pct = Column(Numeric(8, 4))
+    avg_loss_pct = Column(Numeric(8, 4))
+    profit_factor = Column(Numeric(8, 4))
+    sharpe_ratio = Column(Numeric(8, 4))
+    max_drawdown_pct = Column(Numeric(8, 4))
+    period_start = Column(DateTime(timezone=True), nullable=False)
+    period_end = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)

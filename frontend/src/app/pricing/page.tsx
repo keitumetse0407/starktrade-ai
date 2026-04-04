@@ -29,17 +29,17 @@ const PLANS: Plan[] = [
   {
     id: 'pro',
     name: 'StarkTrade AI Pro',
-    amount: 499,
+    amount: 99,
     currency: 'ZAR',
-    description: 'Pro plan - Monthly subscription',
+    description: 'Lifetime access - One-time payment (Normally R499/mo)',
     features: ['Unlimited signals', 'Advanced AI analysis', 'Priority support', 'WhatsApp alerts'],
   },
   {
     id: 'enterprise',
     name: 'StarkTrade AI Enterprise',
-    amount: 3299,
+    amount: 499,
     currency: 'ZAR',
-    description: 'Enterprise plan - Monthly subscription',
+    description: 'Lifetime access - One-time payment (Normally R3,299/mo)',
     features: ['Everything in Pro', 'Custom strategies', 'API access', 'Dedicated support', 'White-label options'],
   },
 ];
@@ -107,6 +107,16 @@ export default function PricingPage() {
           </p>
         </div>
 
+        {/* Crisis Pricing Banner */}
+        <div className="bg-red-900/50 backdrop-blur-sm border border-red-500/30 rounded-xl p-4 mb-6 text-center">
+          <p className="text-red-400 font-bold text-lg">
+            ⚡ CRISIS PRICING: Lifetime Licenses Limited to 100 Customers Only ⚡
+          </p>
+          <p className="text-sm text-red-300 mt-1">
+            After 100 licenses sold, pricing returns to monthly subscriptions
+          </p>
+        </div>
+
         {/* Error Display */}
         {error && (
           <div className="max-w-md mx-auto mb-8 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-center">
@@ -136,7 +146,7 @@ export default function PricingPage() {
 
               <div className="mb-6">
                 <span className="text-5xl font-bold text-white">R{plan.amount}</span>
-                <span className="text-gray-400">/month</span>
+                <span className="text-green-400">one-time</span>
               </div>
 
               <ul className="space-y-3 mb-8">
@@ -160,9 +170,7 @@ export default function PricingPage() {
                     ? 'bg-gold text-black hover:bg-gold/90'
                     : 'bg-white text-black hover:bg-gray-200'
                 }`}
-              >
-                {loading === plan.id ? 'Processing...' : `Subscribe - R${plan.amount}/mo`}
-              </button>
+              >\n                {loading === plan.id ? 'Processing...' : `Get Lifetime Access - R${plan.amount}`}\n              </button>
             </div>
           ))}
         </div>
@@ -170,8 +178,20 @@ export default function PricingPage() {
         {/* Payment Methods */}
         <div className="text-center mt-12">
           <p className="text-gray-500 text-sm">
-            Secure payments via PayFast. Supports card, bank, EFT & mobile money.
+            Secure one-time payments via PayFast. Supports card, bank, EFT & mobile money.
           </p>
+        </div>
+
+        {/* License Counter */}
+        <div className="text-center text-sm text-opacity-70 mb-4">
+          Licenses Sold: <span id="license-counter">87</span>/100
+        </div>
+        <div className="w-full bg-gray-800/50 rounded-full h-2.5 mb-4">
+          <div 
+            id="license-progress" 
+            className="bg-gradient-to-r from-green-400 to-emerald-400 h-2.5 rounded-full transition-width duration-1000"
+            style={{ width: '87%' }}
+          ></div>
         </div>
       </div>
     </div>

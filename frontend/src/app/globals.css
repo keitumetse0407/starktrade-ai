@@ -6,6 +6,7 @@
 
 /* ============================================================
    DARK THEME (Default)
+   WCAG AA compliant colors — updated for accessibility
    ============================================================ */
 :root, .dark {
   --bg-primary: #0A0E27;
@@ -14,19 +15,19 @@
   --bg-card-hover: rgba(26, 31, 61, 0.8);
   --bg-input: rgba(10, 14, 39, 0.5);
   --text-primary: #E6F1FF;
-  --text-secondary: #8892B0;
+  --text-secondary: #A8B2D1;
   --text-muted: #5A6380;
   --border-primary: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(0, 212, 255, 0.25);
-  --accent: #00D4FF;
-  --accent-glow: rgba(0, 212, 255, 0.3);
-  --profit: #00FF88;
-  --profit-bg: rgba(0, 255, 136, 0.1);
+  --border-hover: rgba(0, 191, 255, 0.3);
+  --accent: #00BFFF;
+  --accent-glow: rgba(0, 191, 255, 0.3);
+  --profit: #00E676;
+  --profit-bg: rgba(0, 230, 118, 0.1);
   --loss: #FF3366;
   --loss-bg: rgba(255, 51, 102, 0.1);
   --gold: #FFD700;
   --gold-bg: rgba(255, 215, 0, 0.1);
-  --shadow-glow: 0 0 40px rgba(0, 212, 255, 0.15);
+  --shadow-glow: 0 0 40px rgba(0, 191, 255, 0.15);
   --shadow-card: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
@@ -43,7 +44,7 @@
   --text-secondary: #64748B;
   --text-muted: #94A3B8;
   --border-primary: rgba(0, 0, 0, 0.08);
-  --border-hover: rgba(0, 212, 255, 0.4);
+  --border-hover: rgba(0, 191, 255, 0.4);
   --accent: #0EA5E9;
   --accent-glow: rgba(14, 165, 233, 0.2);
   --profit: #10B981;
@@ -66,6 +67,27 @@ body {
   color: var(--text-primary);
   font-family: 'Inter', system-ui, sans-serif;
   overflow-x: hidden;
+}
+
+/* ============================================================
+   GLASS DARK — Sidebar and overlay variant
+   ============================================================ */
+.glass-dark {
+  background: rgba(10, 14, 39, 0.85);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ============================================================
+   HERO GLOW — Background gradient for hero sections
+   ============================================================ */
+.hero-glow {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(0, 191, 255, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(0, 230, 118, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 20% 80%, rgba(255, 51, 102, 0.05) 0%, transparent 50%),
+    var(--bg-primary);
 }
 
 /* ============================================================
@@ -205,7 +227,7 @@ body {
 }
 
 /* ============================================================
-   BUTTONS
+   BUTTONS — Micro-interactions
    ============================================================ */
 .btn-primary {
   padding: 0.75rem 1.5rem;
@@ -213,13 +235,33 @@ body {
   color: var(--bg-primary);
   font-weight: 600;
   border-radius: 14px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 0 20px var(--accent-glow);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+  transform: translateX(-100%);
+  transition: transform 0.4s ease;
+}
+
+.btn-primary:hover::before {
+  transform: translateX(100%);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 30px var(--accent-glow), 0 8px 25px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 16px rgba(0, 191, 255, 0.35), 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 191, 255, 0.25);
 }
 
 .btn-outline {
@@ -228,13 +270,108 @@ body {
   color: var(--text-primary);
   font-weight: 500;
   border-radius: 14px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: transparent;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.btn-outline::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 14px;
+  background: var(--accent-glow);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.btn-outline:hover::before {
+  opacity: 1;
 }
 
 .btn-outline:hover {
   border-color: var(--border-hover);
-  background: var(--accent-glow);
-  transform: translateY(-2px);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-outline:active {
+  transform: translateY(0);
+}
+
+/* ============================================================
+   SKELETON LOADING STATES
+   ============================================================ */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-card) 0%,
+    var(--bg-card-hover) 50%,
+    var(--bg-card) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+.skeleton-text {
+  height: 1rem;
+  margin-bottom: 0.5rem;
+  border-radius: 6px;
+}
+
+.skeleton-title {
+  height: 1.5rem;
+  width: 60%;
+  margin-bottom: 1rem;
+  border-radius: 6px;
+}
+
+.skeleton-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.skeleton-card {
+  height: 120px;
+  border-radius: 16px;
+}
+
+.skeleton-chart {
+  height: 240px;
+  border-radius: 12px;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ============================================================
+   SUCCESS STATE ANIMATIONS
+   ============================================================ */
+@keyframes success-pop {
+  0% { transform: scale(0.9); opacity: 0; }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.success-pop {
+  animation: success-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100px) rotate(360deg); opacity: 0; }
+}
+
+.confetti-piece {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  animation: confetti-fall 1s ease-out forwards;
 }
 
 /* ============================================================
@@ -261,6 +398,13 @@ body {
    ============================================================ */
 .text-gradient-accent {
   background: linear-gradient(135deg, var(--accent), var(--profit));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, var(--gold), #FFA500);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
