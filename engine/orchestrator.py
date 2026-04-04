@@ -1,15 +1,19 @@
 """Signal Orchestrator — The brain that coordinates all 4 agents.
 
 Architecture:
-  1. RegimeDetector classifies market state (TRENDING/BREAKOUT/RANGE/ROTATIONAL)
-  2. All 4 agents run in parallel: Quant, Sentiment, Pattern, Regime
-  3. ConsensusEngine votes: ≥3 of 4 agree → TRADE, 2 → WATCH, ≤1 → NO TRADE
-  4. RiskAgent builds TradePlan with entry/SL/TP/position size
-  5. SignalFormatter outputs Telegram-ready signal message
+  1. Load context memory — recent performance, agent scores, market journal
+  2. RegimeDetector classifies market state (TRENDING/BREAKOUT/RANGE/ROTATIONAL)
+  3. All 4 agents run: Quant, Sentiment, Pattern, Regime
+  4. ConsensusEngine: votes weighted by agent dynamic performance
+  5. RiskAgent builds TradePlan with entry/SL/TP/position size
+  6. SignalFormatter outputs Telegram-ready signal message
+  7. Save signal + regime to context memory for future learning
 
 No LLM. No external API. Pure Python, pandas, sklearn.
+Learns from every outcome.
 """
 
+import uuid
 import pandas as pd
 import numpy as np
 import logging
@@ -24,6 +28,12 @@ from engine.pattern_agent import PatternAgent
 from engine.risk_agent import RiskAgent, TradePlan
 from engine.indicators import TechnicalIndicators
 from engine.data_collector import GoldDataCollector
+from engine.context_memory import (
+    ContextMemory,
+    SignalEntry,
+    RegimeEntry,
+    AgentPerformance,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +108,9 @@ class SignalOrchestrator:
         self.pattern = PatternAgent()
         self.risk = RiskAgent(account_balance=account_balance)
 
+        # Load context memory — survives across runs
+        self.memory = ContextMemory.load()
+
         # Load trained models if available
         if not self.quant.load():
             logger.warning("No trained quant models found. Signals will use default weights.")
@@ -154,7 +167,7 @@ class SignalOrchestrator:
         patterns = self.pattern.detect_patterns(df, lookback=10)
         pattern_result = self.pattern.summarize(
             patterns,
-            trend_context=None,  # Will be set from regime below
+            trend_context=regime_result.trend_direction,
             df=df,
         )
 
@@ -165,6 +178,16 @@ class SignalOrchestrator:
             sentiment=sentiment_result,
             pattern=pattern_result,
             current_price=current_price,
+        )
+
+        # Step 3b: Apply dynamic weights from context memory
+        votes = self._apply_dynamic_weights(votes)
+        logger.info(
+            f"Dynamic weights applied: "
+            + ", ".join(
+                f"{v.agent}={self.memory.agents.get(v.agent, AgentPerformance(v.agent)).dynamic_weight:.2f}"
+                for v in votes
+            )
         )
 
         # Step 4: Reach consensus
@@ -198,7 +221,53 @@ class SignalOrchestrator:
             patterns=patterns,
         )
 
-        logger.info(f"Signal generated: {signal.direction} | Consensus: {signal.consensus_score}")
+        # Step 7: Record to context memory (persistent learning)
+        signal_id = str(uuid.uuid4())[:8]
+        signal_entry = SignalEntry(
+            id=signal_id,
+            date=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+            symbol=signal.symbol,
+            direction=signal.direction,
+            entry_price=signal.entry,
+            stop_loss=signal.stop_loss,
+            take_profit_1=signal.take_profit_1,
+            take_profit_2=signal.take_profit_2,
+            confidence=signal.confidence,
+            consensus_score=signal.consensus_score,
+            regime=signal.regime,
+            trend_direction=regime_result.trend_direction,
+            agent_votes=[
+                {"agent": v.agent, "vote": v.vote, "confidence": v.confidence, "reasoning": v.reasoning}
+                for v in signal.agent_votes
+            ],
+            status="generated",
+        )
+        self.memory.add_signal(signal_entry)
+
+        # Record regime in market journal
+        regime_entry = RegimeEntry(
+            date=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            regime=regime_result.regime.value,
+            trend_direction=regime_result.trend_direction,
+            trend_strength=regime_result.trend_strength,
+            volatility_state=regime_result.volatility_state,
+            atr_state=regime_result.atr_state,
+            atr_ratio=regime_result.atr_ratio,
+            volume_state=regime_result.volume_state,
+            volume_ratio=regime_result.volume_ratio,
+            adx=regime_result.trend_strength * 50,  # Approximate ADX from strength
+            price=current_price,
+        )
+        self.memory.add_regime_entry(regime_entry)
+
+        # Save memory to disk
+        self.memory.save()
+
+        logger.info(
+            f"Signal {signal_id}: {signal.direction} | Consensus: {signal.consensus_score} | "
+            f"Memory: {len(self.memory.signals)} total signals, "
+            f"regime={regime_result.regime.value} ({self.memory.market_journal.days_in_current_regime}d)"
+        )
         return signal
 
     def _collect_votes(
@@ -309,6 +378,26 @@ class SignalOrchestrator:
             ))
 
         return votes
+
+    def _apply_dynamic_weights(self, votes: List[AgentVote]) -> List[AgentVote]:
+        """
+        Adjust each vote's confidence by the agent's dynamic weight.
+
+        An agent with weight=1.3 gets its confidence boosted 30%.
+        An agent with weight=0.7 gets its confidence reduced 30%.
+
+        This is how the system LEARNs — agents on hot streaks get more
+        influence, agents on cold streaks get less.
+        """
+        weighted_votes = []
+        for vote in votes:
+            agent_name = vote.agent
+            if agent_name in self.memory.agents:
+                weight = self.memory.agents[agent_name].dynamic_weight
+                adjusted_confidence = min(vote.confidence * weight, 1.0)
+                vote.confidence = round(adjusted_confidence, 3)
+            weighted_votes.append(vote)
+        return weighted_votes
 
     def _reach_consensus(
         self,
@@ -500,6 +589,25 @@ class SignalOrchestrator:
 
         if pattern.get("count", 0) > 0:
             lines.append(f"🕯️  Patterns: {pattern['count']} detected ({pattern['signal']}, score={pattern['score']:.2f})")
+
+        # Context memory summary
+        if self.memory.system_state["total_signals_generated"] > 0:
+            perf = self.memory.recent_performance(days=30)
+            lines += [
+                f"",
+                f"{'─'*48}",
+                f"🧠 System Memory:",
+                f"  Signals generated: {self.memory.system_state['total_signals_generated']}",
+                f"  Trades taken: {self.memory.system_state['total_trades_taken']}",
+            ]
+            if perf.get("total_signals", 0) > 0:
+                lines += [
+                    f"  Recent win rate: {perf['win_rate']}% ({perf['wins']}W/{perf['losses']}L)",
+                    f"  Recent PnL: {perf['total_pnl_pct']:+.1f}%",
+                    f"  Current streak: {'W' if perf['consecutive_wins'] else 'L'}{max(perf['consecutive_wins'], perf['consecutive_losses'])}",
+                ]
+            else:
+                lines.append(f"  Live track record: Building... (first signal)")
 
         lines += [
             f"",

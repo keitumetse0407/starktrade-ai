@@ -64,3 +64,9 @@ htmlcov/
 # Misc
 *.bak
 *.tmp
+
+# Context memory (runtime state — don't commit)
+engine/memory/
+
+# ML models (large binaries — tracked separately if needed)
+engine/models/*.pkl
