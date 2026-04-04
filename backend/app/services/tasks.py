@@ -1,7 +1,85 @@
 """Celery task definitions."""
 import asyncio
 import uuid
+import logging
 from app.services.celery_app import celery_app
+
+logger = logging.getLogger(__name__)
+
+
+@celery_app.task(name="generate_daily_signal")
+def generate_daily_signal():
+    """
+    Generate daily XAU/USD signal and send to Discord.
+    Runs at 06:00 UTC daily via Celery Beat.
+    """
+    from app.db.session import async_session_factory
+    from app.db.models import Signal
+
+    loop = asyncio.new_event_loop()
+    try:
+        asyncio.set_event_loop(loop)
+        result = loop.run_until_complete(_generate_and_send())
+        return result
+    finally:
+        loop.close()
+
+
+async def _generate_and_send():
+    """Generate signal via orchestrator, save to DB, send to Discord."""
+    try:
+        # 1. Generate signal
+        from engine.orchestrator import SignalOrchestrator
+        orchestrator = SignalOrchestrator()
+        signal = await orchestrator.generate_signal()
+
+        if not signal or not signal.action:
+            logger.info("No signal generated (no consensus)")
+            return {"status": "no_signal"}
+
+        # 2. Save to database
+        async with async_session_factory() as db:
+            db_signal = Signal(
+                symbol="XAUUSD",
+                action=signal.action.lower(),
+                entry_price=signal.entry,
+                stop_loss=signal.stop_loss,
+                take_profit=signal.take_profit,
+                confidence=signal.confidence,
+                rationale=signal.rationale,
+                message_text=signal.message,
+                status="generated",
+                delivered_via="discord",
+            )
+            db.add(db_signal)
+            await db.commit()
+            await db.refresh(db_signal)
+
+        # 3. Send to Discord
+        from engine.discord_notifier import send_signal_to_discord
+        message_id = await send_signal_to_discord(signal.message)
+
+        # 4. Update signal status
+        async with async_session_factory() as db:
+            from sqlalchemy import select
+            from app.db.models import Signal as SignalModel
+            stmt = select(SignalModel).where(SignalModel.id == db_signal.id)
+            result = await db.execute(stmt)
+            sig = result.scalar_one()
+            sig.status = "sent"
+            sig.telegram_message_id = str(message_id)  # reuse field for Discord msg ID
+            await db.commit()
+
+        logger.info(f"Signal sent to Discord: {signal.action} XAUUSD @ {signal.entry}")
+        return {
+            "status": "sent",
+            "action": signal.action,
+            "entry": signal.entry,
+            "message_id": message_id,
+        }
+    except Exception as e:
+        logger.error(f"Failed to generate/send signal: {e}", exc_info=True)
+        return {"status": "error", "error": str(e)}
 
 
 @celery_app.task(name="execute_trade")

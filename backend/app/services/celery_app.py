@@ -19,9 +19,14 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     result_expires=3600,
     beat_schedule={
+        "generate-daily-signal": {
+            "task": "generate_daily_signal",
+            # 06:00 UTC = 08:00 SAST (SA traders wake up to signals)
+            "schedule": 86400.0,  # daily — set crontab when deployed
+        },
         "run-agent-pipeline": {
             "task": "run_agent_pipeline",
-            "schedule": 300.0,  # every 5 minutes during market hours
+            "schedule": 300.0,
         },
         "update-portfolio-metrics": {
             "task": "update_portfolio_metrics",
@@ -29,11 +34,11 @@ celery_app.conf.update(
         },
         "generate-daily-digest": {
             "task": "generate_daily_digest",
-            "schedule": 86400.0,  # daily
+            "schedule": 86400.0,
         },
         "run-weekly-learning": {
             "task": "run_weekly_learning",
-            "schedule": 604800.0,  # weekly
+            "schedule": 604800.0,
         },
     },
 )

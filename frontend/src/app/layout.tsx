@@ -5,21 +5,21 @@ import { ClientProviders } from '@/components/ClientProviders';
 import { ThemeProvider } from '@/lib/theme';
 
 export const metadata: Metadata = {
-  title: 'StarkTrade AI — Autonomous Trading. Institutional Results.',
-  description: '7 specialized AI agents trade for you 24/7 with institutional-grade risk management. Start with $100K paper trading. No credit card required.',
-  keywords: ['AI trading', 'autonomous trading', 'algorithmic trading', 'AI agents', 'quantitative trading', 'fintech'],
+  title: 'StarkTrade AI — Daily Gold Signals for SA Traders',
+  description: 'AI-assisted XAU/USD trade signals delivered daily to Discord. Backtested on 504 days. R299/month. Signal-only — you execute.',
+  keywords: ['AI signals', 'gold signals', 'XAUUSD', 'South Africa trading', 'daily signals', 'Discord signals'],
   authors: [{ name: 'StarkTrade AI' }],
   openGraph: {
-    title: 'StarkTrade AI — Autonomous Trading. Institutional Results.',
-    description: '7 specialized AI agents trade for you 24/7 with institutional-grade risk management.',
+    title: 'StarkTrade AI — Daily Gold Signals for SA Traders',
+    description: 'AI-assisted XAU/USD trade signals delivered daily to Discord. R299/month.',
     type: 'website',
     locale: 'en_US',
     siteName: 'StarkTrade AI',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'StarkTrade AI — Autonomous Trading. Institutional Results.',
-    description: '7 specialized AI agents trade for you 24/7 with institutional-grade risk management.',
+    title: 'StarkTrade AI — Daily Gold Signals for SA Traders',
+    description: 'AI-assisted XAU/USD trade signals delivered daily to Discord. R299/month.',
   },
   robots: {
     index: true,
