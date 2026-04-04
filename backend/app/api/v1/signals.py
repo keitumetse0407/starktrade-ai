@@ -97,7 +97,7 @@ class SignalPerformanceResponse(BaseModel):
 
 class SignalSendRequest(BaseModel):
     signal_id: str = Field(..., description="UUID of the generated signal")
-    channel: str = Field(default="api", description="Delivery channel: telegram, whatsapp, api, email")
+    channel: str = Field(default="api", description="Delivery channel: telegram, discord, whatsapp, api, email")
 
 
 class SignalOutcomeRequest(BaseModel):
@@ -359,6 +359,18 @@ async def send_signal(
         except Exception as e:
             logger.error(f"Failed to send signal via Telegram: {e}")
             raise HTTPException(status_code=502, detail=f"Telegram delivery failed: {str(e)}")
+
+    elif req.channel == "discord":
+        # Send via Discord webhook
+        try:
+            from engine.discord_notifier import send_signal_to_discord
+            message_id = await send_signal_to_discord(signal.message_text)
+            signal.delivered_via = "discord"
+        except ImportError:
+            logger.warning("Discord module not available — marking as sent without delivery")
+        except Exception as e:
+            logger.error(f"Failed to send signal via Discord: {e}")
+            raise HTTPException(status_code=502, detail=f"Discord delivery failed: {str(e)}")
 
     signal.status = "sent"
     signal.delivered_via = req.channel
