@@ -37,8 +37,12 @@ from app.payfast_routes import router as payfast_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from app.db.session import init_db
+    from app.db.session import init_db, async_session_factory
+    from app.db.seed import seed_all
     await init_db()
+    async with async_session_factory() as session:
+        await seed_all(session)
+        await session.commit()
     yield
 
 
