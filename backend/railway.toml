@@ -1,9 +1,5 @@
 [build]
-builder = "nixpacks"
-coreThreads = 1
+builder = "docker"
 
 [deploy]
-startCommant = "unicorn app.main:app -host 0.0.0.0 -port $PORT"
-HealthcheckPath = "/api/health"
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 10
+startCommand = "celery -A app.services.celery_app beat --loglevel=info"
