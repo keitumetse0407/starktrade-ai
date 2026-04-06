@@ -33,7 +33,7 @@ httpx==0.28.1
 qdrant-client==1.12.1
 
 # Technical Analysis
-numpy==2.2.1
+numpy<2
 pandas==2.2.3
 scikit-learn==1.6.0
 
