@@ -1,5 +1,9 @@
 """StarkTrade AI — FastAPI Application Entry Point"""
 import os
+
+# Fallback DB if DATABASE_URL not set
+if not os.getenv('DATABASE_URL'):
+    os.environ['DATABASE_URL'] = 'sqlite:///./test.db'
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
