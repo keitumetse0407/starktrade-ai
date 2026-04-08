@@ -70,3 +70,5 @@ engine/memory/
 
 # ML models (large binaries — tracked separately if needed)
 engine/models/*.pkl
+.vercel
+.env*.local
