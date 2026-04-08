@@ -1,23 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Zap, Eye, EyeOff, Brain, Shield, Target, TrendingUp, ArrowRight } from 'lucide-react';
+import { Zap, Eye, EyeOff, ArrowRight } from 'lucide-react';
 import { pb } from '@/lib/api';
-
-const QUIZ_QUESTIONS = [
-  { question: 'Trading experience?', options: [{ text: 'Beginner', value: 0 }, { text: 'Intermediate', value: 1 }, { text: 'Advanced', value: 2 }, { text: 'Expert', value: 3 }] },
-  { question: 'Risk tolerance?', options: [{ text: 'Very Low', value: 0 }, { text: 'Low', value: 1 }, { text: 'Medium', value: 2 }, { text: 'High', value: 3 }] },
-  { question: 'Investment goal?', options: [{ text: 'Capital preservation', value: 0 }, { text: 'Steady income', value: 1 }, { text: 'Long-term growth', value: 2 }, { text: 'Aggressive growth', value: 3 }] },
-  { question: 'Starting capital?', options: [{ text: '< $10K', value: 0 }, { text: '$10K - $50K', value: 1 }, { text: '$50K - $200K', value: 2 }, { text: '$200K+', value: 3 }] },
-  { question: 'Time horizon?', options: [{ text: '< 6 months', value: 0 }, { text: '6 months - 2 years', value: 1 }, { text: '2-10 years', value: 2 }, { text: '10+ years', value: 3 }] },
-];
-
-const STRATEGIES = ['Conservative', 'All-Weather', 'Value', 'Aggressive'];
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [step, setStep] = useState(-1);
+  const [page, setPage] = useState<'auth' | 'quiz' | 'done'>('auth');
+  const [quizStep, setQuizStep] = useState(0);
   const [answers, setAnswers] = useState<number[]>([]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,33 +17,35 @@ export default function OnboardingPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [agreeTerms, setAgreeTerms] = useState(false);
-  const [isChecking, setIsChecking] = useState(true);
+
+  const questions = [
+    { q: 'Trading experience?', opts: ['Beginner', 'Intermediate', 'Advanced', 'Expert'] },
+    { q: 'Risk tolerance?', opts: ['Very Low', 'Low', 'Medium', 'High'] },
+    { q: 'Investment goal?', opts: ['Capital preservation', 'Steady income', 'Long-term growth', 'Aggressive'] },
+    { q: 'Starting capital?', opts: ['< $10K', '$10K-$50K', '$50K-$200K', '$200K+'] },
+    { q: 'Time horizon?', opts: ['< 6 months', '6mo-2yr', '2-10yr', '10+yr'] },
+  ];
 
   useEffect(() => {
-    const checkAuth = async () => {
-      if (pb.authStore.isValid) {
-        router.push('/dashboard');
-      } else {
-        setIsChecking(false);
-      }
-    };
-    checkAuth();
+    if (pb.authStore.isValid) {
+      router.push('/dashboard');
+    }
   }, []);
 
-  const handleRegister = async () => {
+  const handleRegister = useCallback(async () => {
     setError('');
-    if (!agreeTerms) { setError('Accept terms'); return; }
-    if (password.length < 8) { setError('Password needs 8+ chars'); return; }
+    if (!agreeTerms) { setError('Please accept terms'); return; }
+    if (password.length < 8) { setError('Password needs 8+ characters'); return; }
     setLoading(true);
     try {
       await pb.collection('users').create({ email, password, passwordConfirm: password, name: fullName || email, emailVisibility: true });
       await pb.collection('users').authWithPassword(email, password);
-      setStep(0);
-    } catch (e: any) { setError(e.message || 'Failed'); }
+      setPage('quiz');
+    } catch (e: any) { setError(e.message || 'Registration failed'); }
     setLoading(false);
-  };
+  }, [email, password, fullName, agreeTerms]);
 
-  const handleLogin = async () => {
+  const handleLogin = useCallback(async () => {
     setError('');
     setLoading(true);
     try {
@@ -60,25 +53,22 @@ export default function OnboardingPage() {
       router.push('/dashboard');
     } catch (e: any) { setError(e.message || 'Invalid credentials'); }
     setLoading(false);
-  };
+  }, [email, password]);
 
-  const handleAnswer = (value: number) => {
-    setAnswers([...answers, value]);
-    if (step < QUIZ_QUESTIONS.length - 1) {
-      setTimeout(() => setStep(step + 1), 100);
+  const handleAnswer = useCallback((value: number) => {
+    const newAnswers = [...answers, value];
+    setAnswers(newAnswers);
+    if (quizStep < questions.length - 1) {
+      setQuizStep(quizStep + 1);
     } else {
-      setTimeout(() => setStep(QUIZ_QUESTIONS.length), 100);
+      setPage('done');
     }
-  };
-
-  if (isChecking) {
-    return <div className="min-h-screen bg-black flex items-center justify-center"><Zap className="w-12 h-12 text-blue-500 animate-pulse" /></div>;
-  }
+  }, [quizStep, answers]);
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center px-6">
       <div className="w-full max-w-lg">
-        {step === -1 && (
+        {page === 'auth' && (
           <div className="bg-gray-900/50 backdrop-blur border border-gray-800 rounded-2xl p-8">
             <div className="text-center mb-8">
               <Zap className="w-16 h-16 text-blue-500 mx-auto mb-4" />
@@ -105,21 +95,27 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {step >= 0 && step < QUIZ_QUESTIONS.length && (
+        {page === 'quiz' && (
           <div className="bg-gray-900/50 backdrop-blur border border-gray-800 rounded-2xl p-8">
-            <h2 className="text-xl font-bold text-white mb-2">{QUIZ_QUESTIONS[step].question}</h2>
-            <div className="space-y-3 mt-6">
-              {QUIZ_QUESTIONS[step].options.map((opt, i) => (
-                <button key={i} onClick={() => handleAnswer(opt.value)} className="w-full text-left px-6 py-4 rounded-xl border border-gray-700 bg-gray-800/50 hover:border-blue-500 hover:bg-blue-500/10 text-white transition">{opt.text}</button>
+            <div className="mb-6">
+              <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-500" style={{ width: `${((quizStep + 1) / questions.length) * 100}%` }} />
+              </div>
+              <p className="text-sm text-gray-400 mt-2">{quizStep + 1} of {questions.length}</p>
+            </div>
+            <h2 className="text-xl font-bold text-white mb-6">{questions[quizStep].q}</h2>
+            <div className="space-y-3">
+              {questions[quizStep].opts.map((opt, i) => (
+                <button key={i} onClick={() => handleAnswer(i)} className="w-full text-left px-6 py-4 rounded-xl border border-gray-700 bg-gray-800/50 hover:border-blue-500 hover:bg-blue-500/10 text-white transition">{opt}</button>
               ))}
             </div>
           </div>
         )}
 
-        {step >= QUIZ_QUESTIONS.length && (
+        {page === 'done' && (
           <div className="bg-gray-900/50 backdrop-blur border border-gray-800 rounded-2xl p-8 text-center">
             <h2 className="text-2xl font-bold text-white mb-4">You're Ready!</h2>
-            <p className="text-gray-400 mb-6">Strategy: {STRATEGIES[Math.min(Math.floor(answers.reduce((a,b)=>a+b,0)/answers.length), 3)]}</p>
+            <p className="text-gray-400 mb-6">Your AI trading autopilot is configured.</p>
             <button onClick={() => router.push('/dashboard')} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg inline-flex items-center gap-2">Launch Dashboard <ArrowRight className="w-4 h-4" /></button>
           </div>
         )}
