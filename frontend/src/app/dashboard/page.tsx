@@ -7,113 +7,66 @@ import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { user, checkAuth } = useAuthStore();
+  const { user, checkAuth, logout } = useAuthStore();
   const { trades, isLoading, fetchTrades, addTrade, closeTrade, removeTrade, subscribeRealtime } = useTradesStore();
 
   useEffect(() => {
     checkAuth();
     if (!user) {
-      router.push('/');
+      router.push('/login'); // <-- REDIRECT TO NEW LOGIN PAGE
     } else {
       fetchTrades();
       subscribeRealtime();
     }
-  }, [user]);
+  }, [user, checkAuth, fetchTrades, subscribeRealtime, router]);
 
   const handleAddTrade = async () => {
     await addTrade({
-      symbol: 'BTC/USDT',
+      symbol: 'ETH/USD',
       type: 'long',
-      entry: 45000,
-      status: 'open'
+      entry: 2500,
+      status: 'open',
     });
   };
 
-  if (isLoading) {
+  if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Loading trades...</div>
+      <div className="min-h-screen bg-black flex items-center justify-center text-white">
+        Redirecting to login...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-8 bg-black text-white">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">Dashboard</h1>
-          <button 
-            onClick={handleAddTrade}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium"
-          >
-            Add Test Trade
-          </button>
+          <div>
+            <h1 className="text-4xl font-bold">Dashboard</h1>
+            <p className="text-gray-400 mt-2">Welcome, {user.email}</p>
+          </div>
+          <div className="flex gap-4">
+            <button onClick={handleAddTrade} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg">
+              Add Test Trade
+            </button>
+            <button onClick={() => { logout(); router.push('/login'); }} className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg">
+              Logout
+            </button>
+          </div>
         </div>
 
-        <div className="grid gap-6">
-          {trades.length === 0 ? (
-            <div className="text-center py-12 border-2 border-dashed rounded-lg">
-              <p className="text-gray-500 mb-4">No trades yet</p>
-              <button 
-                onClick={handleAddTrade}
-                className="text-blue-600 hover:underline"
-              >
-                Create your first trade
-              </button>
-            </div>
-          ) : (
-            trades.map((trade) => (
-              <div key={trade.id} className="border rounded-lg p-6 bg-white shadow-sm">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="text-xl font-bold mb-2">{trade.symbol}</h3>
-                    <div className="space-y-1 text-sm">
-                      <p className="text-gray-600">
-                        Type: <span className="font-medium capitalize">{trade.type}</span>
-                      </p>
-                      <p className="text-gray-600">
-                        Entry: <span className="font-medium">${trade.entry.toLocaleString()}</span>
-                      </p>
-                      {trade.exit && (
-                        <p className="text-gray-600">
-                          Exit: <span className="font-medium">${trade.exit.toLocaleString()}</span>
-                        </p>
-                      )}
-                      {trade.profit !== undefined && (
-                        <p className={trade.profit >= 0 ? 'text-green-600' : 'text-red-600'}>
-                          Profit: <span className="font-bold">
-                            ${trade.profit.toLocaleString()} ({trade.profitPercent?.toFixed(2)}%)
-                          </span>
-                        </p>
-                      )}
-                      <p className="text-gray-600">
-                        Status: <span className={`font-medium ${trade.status === 'open' ? 'text-blue-600' : 'text-gray-600'}`}>
-                          {trade.status}
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    {trade.status === 'open' && (
-                      <button
-                        onClick={() => closeTrade(trade.id!, trade.entry * 1.05)}
-                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded text-sm"
-                      >
-                        Close +5%
-                      </button>
-                    )}
-                    <button
-                      onClick={() => removeTrade(trade.id!)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded text-sm"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
+        <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
+          <h2 class="text-2xl mb-4">Trades</h2>
+          {isLoading && <p>Loading trades...</p>}
+          <div className="grid gap-4">
+            {trades.map((trade) => (
+              <div key={trade.id} className="border border-gray-700 rounded-lg p-4 bg-gray-800/50">
+                <h3 className="font-bold">{trade.symbol}</h3>
+                <p>Entry: ${trade.entry}</p>
+                <p>Status: {trade.status}</p>
               </div>
-            ))
-          )}
+            ))}
+          </div>
         </div>
       </div>
     </div>
