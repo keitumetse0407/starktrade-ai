@@ -1,8 +1,6 @@
 'use client';
 
 import { Toaster } from 'react-hot-toast';
-import { SocialProofToast } from '@/components/SocialProofToast';
-import { ExitIntentPopup } from '@/components/ExitIntentPopup';
 
 export function ClientProviders({ children }: { children: React.ReactNode }) {
   return (
@@ -18,8 +16,6 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
         }}
       />
       {children}
-      <SocialProofToast />
-      <ExitIntentPopup />
     </>
   );
 }
