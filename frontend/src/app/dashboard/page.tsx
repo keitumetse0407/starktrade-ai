@@ -56,7 +56,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
-          <h2 class="text-2xl mb-4">Trades</h2>
+          <h2 className="text-2xl mb-4">Trades</h2>
           {isLoading && <p>Loading trades...</p>}
           <div className="grid gap-4">
             {trades.map((trade) => (
