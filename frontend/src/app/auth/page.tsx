@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { pb } from '@/lib/api';
 
 export default function AuthPage() {
   const router = useRouter();
@@ -15,10 +14,18 @@ export default function AuthPage() {
     setError('');
     setLoading(true);
     try {
-      await pb.collection('users').authWithPassword(email, password);
+      const res = await fetch('https://drawing-giants-barrier-chose.trycloudflare.com/api/collections/users/auth-with-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity: email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Login failed');
+      
+      localStorage.setItem('pocketbase_token', data.token);
       router.push('/dashboard');
     } catch (err: any) {
-      setError(err?.message || 'Login failed');
+      setError(err.message || 'Login failed');
     }
     setLoading(false);
   }
@@ -27,16 +34,17 @@ export default function AuthPage() {
     setError('');
     setLoading(true);
     try {
-      await pb.collection('users').create({
-        email,
-        password,
-        passwordConfirm: password,
-        name: email.split('@')[0]
+      const res = await fetch('https://drawing-giants-barrier-chose.trycloudflare.com/api/collections/users/records', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, passwordConfirm: password, name: email.split('@')[0] })
       });
-      await pb.collection('users').authWithPassword(email, password);
-      router.push('/dashboard');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Signup failed');
+      
+      await handleLogin();
     } catch (err: any) {
-      setError(err?.message || 'Signup failed');
+      setError(err.message || 'Signup failed');
     }
     setLoading(false);
   }
@@ -65,11 +73,11 @@ export default function AuthPage() {
             style={{ width: '100%', padding: '0.75rem', backgroundColor: '#111', border: '1px solid #444', borderRadius: '0.5rem', color: 'white', marginBottom: '1rem' }}
           />
           
-          <button onClick={handleLogin} disabled={loading} style={{ width: '100%', padding: '0.75rem', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '0.5rem', marginBottom: '0.5rem' }}>
+          <button onClick={handleLogin} disabled={loading} style={{ width: '100%', padding: '0.75rem', backgroundColor: '#3b82f6', color: 'white', border: 'none', borderRadius: '0.5rem', marginBottom: '0.5rem', cursor: loading ? 'not-allowed' : 'pointer' }}>
             {loading ? '...' : 'Login'}
           </button>
           
-          <button onClick={handleSignup} disabled={loading} style={{ width: '100%', padding: '0.75rem', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '0.5rem' }}>
+          <button onClick={handleSignup} disabled={loading} style={{ width: '100%', padding: '0.75rem', backgroundColor: '#333', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: loading ? 'not-allowed' : 'pointer' }}>
             {loading ? '...' : 'Sign Up'}
           </button>
         </div>
