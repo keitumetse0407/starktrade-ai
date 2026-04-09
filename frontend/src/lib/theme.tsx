@@ -19,11 +19,15 @@ const ThemeContext = createContext<ThemeContextType>({
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>('dark');
 
+  // RUN ONCE ONLY ON PAGE LOAD
   useEffect(() => {
     const saved = localStorage.getItem('theme') as Theme;
     if (saved) setTheme(saved);
+
+    document.documentElement.classList.add('dark');
   }, []);
 
+  // UPDATE WHEN THEME CHANGES
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
     document.documentElement.classList.toggle('light', theme === 'light');
