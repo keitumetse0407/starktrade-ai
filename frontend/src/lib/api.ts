@@ -1,6 +1,6 @@
 import PocketBase from 'pocketbase';
 
-const pb = new PocketBase(process.env.NEXT_PUBLIC_POCKETBASE_URL || 'http://113.30.188.215:8090');
+const pb = new PocketBase(process.env.NEXT_PUBLIC_POCKETBASE_URL || 'https://drawing-giants-barrier-chose.trycloudflare.com');
 pb.autoCancellation(false);
 
 export async function apiFetch(path: string, options?: RequestInit): Promise<Response> {
