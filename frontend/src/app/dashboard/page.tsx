@@ -1,72 +1,72 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useTradesStore } from '@/lib/trades-store';
-import { useAuthStore } from '@/lib/auth-store';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const { user, checkAuth, logout } = useAuthStore();
-  const { trades, isLoading, fetchTrades, addTrade, closeTrade, removeTrade, subscribeRealtime } = useTradesStore();
+  const [trades, setTrades] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkAuth();
-    if (!user) {
-      router.push('/login'); // <-- REDIRECT TO NEW LOGIN PAGE
-    } else {
-      fetchTrades();
-      subscribeRealtime();
+    fetchTrades();
+  }, []);
+
+  async function fetchTrades() {
+    try {
+      const res = await fetch('https://drawing-giants-barrier-chose.trycloudflare.com/api/collections/trades/records');
+      const data = await res.json();
+      setTrades(data.items || []);
+    } catch (err) {
+      console.error(err);
     }
-  }, [user, checkAuth, fetchTrades, subscribeRealtime, router]);
+    setLoading(false);
+  }
 
-  const handleAddTrade = async () => {
-    await addTrade({
-      symbol: 'ETH/USD',
-      type: 'long',
-      entry: 2500,
-      status: 'open',
-    });
-  };
+  async function addTrade() {
+    try {
+      await fetch('https://drawing-giants-barrier-chose.trycloudflare.com/api/collections/trades/records', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol: 'ETH/USD',
+          type: 'long',
+          entry: 2500,
+          status: 'open'
+        })
+      });
+      fetchTrades();
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-white">
-        Redirecting to login...
-      </div>
-    );
+  if (loading) {
+    return <div style={{ minHeight: '100vh', backgroundColor: '#000', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Loading...</div>;
   }
 
   return (
-    <div className="min-h-screen p-8 bg-black text-white">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-4xl font-bold">Dashboard</h1>
-            <p className="text-gray-400 mt-2">Welcome, {user.email}</p>
-          </div>
-          <div className="flex gap-4">
-            <button onClick={handleAddTrade} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg">
-              Add Test Trade
-            </button>
-            <button onClick={() => { logout(); router.push('/login'); }} className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-3 rounded-lg">
-              Logout
-            </button>
-          </div>
+    <div style={{ minHeight: '100vh', backgroundColor: '#000', color: 'white', padding: '2rem' }}>
+      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: 'bold' }}>Dashboard</h1>
+          <button onClick={addTrade} style={{ padding: '0.75rem 1.5rem', backgroundColor: '#0066ff', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer' }}>
+            Add Test Trade
+          </button>
         </div>
 
-        <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6">
-          <h2 className="text-2xl mb-4">Trades</h2>
-          {isLoading && <p>Loading trades...</p>}
-          <div className="grid gap-4">
-            {trades.map((trade) => (
-              <div key={trade.id} className="border border-gray-700 rounded-lg p-4 bg-gray-800/50">
-                <h3 className="font-bold">{trade.symbol}</h3>
-                <p>Entry: ${trade.entry}</p>
-                <p>Status: {trade.status}</p>
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          {trades.length === 0 ? (
+            <div style={{ padding: '2rem', border: '2px dashed #333', borderRadius: '0.5rem', textAlign: 'center', color: '#666' }}>
+              No trades yet. Click "Add Test Trade" to create one.
+            </div>
+          ) : (
+            trades.map((trade: any) => (
+              <div key={trade.id} style={{ padding: '1.5rem', backgroundColor: '#111', border: '1px solid #333', borderRadius: '0.5rem' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>{trade.symbol}</h3>
+                <p style={{ color: '#999', fontSize: '0.875rem' }}>Entry: ${trade.entry}</p>
+                <p style={{ color: '#999', fontSize: '0.875rem' }}>Status: {trade.status}</p>
               </div>
-            ))}
-          </div>
+            ))
+          )}
         </div>
       </div>
     </div>
