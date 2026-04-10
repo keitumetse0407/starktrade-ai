@@ -1,6 +1,6 @@
 import PocketBase from 'pocketbase';
 
-const pb = new PocketBase(process.env.NEXT_PUBLIC_POCKETBASE_URL || 'https://drawing-giants-barrier-chose.trycloudflare.com');
+const pb = new PocketBase(process.env.NEXT_PUBLIC_POCKETBASE_URL || 'https://hash-wagner-gba-reviews.trycloudflare.com');
 pb.autoCancellation(false);
 
 export async function apiFetch(path: string, options?: RequestInit): Promise<Response> {
