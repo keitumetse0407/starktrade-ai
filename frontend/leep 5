@@ -1,0 +1,10 @@
+[0;1;32m●[0m cloudflared-backend.service - Cloudflare Quick Tunnel
+     Loaded: loaded (/etc/systemd/system/cloudflared-backend.service; enabled; vendor preset: enabled)
+     Active: [0;1;32mactive (running)[0m since Fri 2026-04-10 21:20:08 UTC; 9ms ago
+   Main PID: 88551 (cloudflared)
+      Tasks: 5 (limit: 9433)
+     Memory: 1.8M
+     CGroup: /system.slice/cloudflared-backend.service
+             └─88551 /usr/local/bin/cloudflared tunnel --url http://localhost:8000
+
+Apr 10 21:20:08 starktrade systemd[1]: Started Cloudflare Quick Tunnel.
