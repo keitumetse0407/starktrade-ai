@@ -1,7 +1,7 @@
 import PocketBase from 'pocketbase';
 
 export const pb = new PocketBase(
-  process.env.NEXT_PUBLIC_POCKETBASE_URL || 'https://hash-wagner-gba-reviews.trycloudflare.com'
+  process.env.NEXT_PUBLIC_POCKETBASE_URL || 'https://starktrade-ai.duckdns.org'
 );
 
 pb.autoCancellation(false);

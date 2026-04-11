@@ -12,7 +12,7 @@ export default function DashboardPage() {
 
   async function fetchTrades() {
     try {
-      const res = await fetch('https://hash-wagner-gba-reviews.trycloudflare.com/api/collections/trades/records');
+      const res = await fetch('https://starktrade-ai.duckdns.org/api/collections/trades/records');
       const data = await res.json();
       setTrades(data.items || []);
     } catch (err) {
@@ -23,7 +23,7 @@ export default function DashboardPage() {
 
   async function addTrade() {
     try {
-      await fetch('https://hash-wagner-gba-reviews.trycloudflare.com/api/collections/trades/records', {
+      await fetch('https://starktrade-ai.duckdns.org/api/collections/trades/records', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -14,7 +14,7 @@ export default function AuthPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('https://hash-wagner-gba-reviews.trycloudflare.com/api/collections/users/auth-with-password', {
+      const res = await fetch('https://starktrade-ai.duckdns.org/api/collections/users/auth-with-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ identity: email, password })
@@ -34,7 +34,7 @@ export default function AuthPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('https://hash-wagner-gba-reviews.trycloudflare.com/api/collections/users/records', {
+      const res = await fetch('https://starktrade-ai.duckdns.org/api/collections/users/records', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, passwordConfirm: password, name: email.split('@')[0] })
