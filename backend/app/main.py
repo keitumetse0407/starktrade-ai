@@ -2,8 +2,6 @@
 import os
 
 # Fallback DB if DATABASE_URL not set
-if not os.getenv('DATABASE_URL'):
-    os.environ['DATABASE_URL'] = 'sqlite:///./test.db'
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -74,6 +72,8 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=[
     "localhost",
     "starktrade.ai",
     "starktrade-ai-backend.railway.app",
+    "starktrade-ai.duckdns.org",
+    "113.30.188.215",
 ])
 
 

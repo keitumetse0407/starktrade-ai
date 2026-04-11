@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     ALPACA_BASE_URL: str = "https://paper-api.alpaca.markets"
 
     class Config:
-        env_file = ".env"
+        env_file = "/root/starktrade-ai/backend/.env"
         case_sensitive = True
         extra = "ignore"
 
