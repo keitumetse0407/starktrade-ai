@@ -61,6 +61,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://starktrade-ai.vercel.app",
+        "https://frontend-bice-mu-58.vercel.app",
         "https://starktrade.ai",
     ],
     allow_credentials=True,
