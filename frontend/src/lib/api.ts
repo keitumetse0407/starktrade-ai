@@ -1,60 +1,35 @@
-import PocketBase from 'pocketbase';
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org';
 
-const pb = new PocketBase(process.env.NEXT_PUBLIC_POCKETBASE_URL || 'https://starktrade-ai.duckdns.org');
-pb.autoCancellation(false);
+function getToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('token');
+}
 
 export async function apiFetch(path: string, options?: RequestInit): Promise<Response> {
-  const body = options?.body ? JSON.parse(options.body as string) : {};
+  const token = getToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...((options?.headers as Record<string, string>) || {}),
+  };
 
-  // Register
-  if (path === '/auth/register' && options?.method === 'POST') {
-    try {
-      await pb.collection('users').create({
-        email: body.email,
-        password: body.password,
-        passwordConfirm: body.password,
-        name: body.full_name || '',
-        emailVisibility: true
-      });
-      const auth = await pb.collection('users').authWithPassword(body.email, body.password);
-      setAuthToken(auth.token);
-      return new Response(JSON.stringify({ access_token: auth.token }), { status: 200 });
-    } catch (err: any) {
-      return new Response(JSON.stringify({ detail: err?.message || 'Registration failed' }), { status: 400 });
+  const url = path.startsWith('http') ? path : `${API_BASE}/api/v1${path}`;
+
+  const res = await fetch(url, { ...options, headers });
+
+  if (res.status === 401) {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('refresh_token');
+      window.location.href = '/auth';
     }
   }
 
-  // Login
-  if (path === '/auth/login' && options?.method === 'POST') {
-    try {
-      const auth = await pb.collection('users').authWithPassword(body.email, body.password);
-      setAuthToken(auth.token);
-      return new Response(JSON.stringify({ access_token: auth.token }), { status: 200 });
-    } catch (err: any) {
-      return new Response(JSON.stringify({ detail: 'Invalid email or password' }), { status: 401 });
-    }
-  }
-
-  // Get current user
-  if (path === '/auth/me') {
-    if (pb.authStore.isValid && pb.authStore.model) {
-      const model = pb.authStore.model;
-      return new Response(JSON.stringify({
-        id: model.id,
-        email: model.email,
-        full_name: model.name || '',
-        role: 'admin'
-      }), { status: 200 });
-    }
-    return new Response(JSON.stringify({ detail: 'Not authenticated' }), { status: 401 });
-  }
-
-  return new Response(JSON.stringify({ detail: 'Not implemented' }), { status: 404 });
+  return res;
 }
 
 export function getAuthToken() {
-  if (typeof window === 'undefined') return null;
-  return pb.authStore.token || localStorage.getItem('token');
+  return getToken();
 }
 
 export function setAuthToken(token: string) {
@@ -64,8 +39,44 @@ export function setAuthToken(token: string) {
 
 export function clearAuthToken() {
   if (typeof window === 'undefined') return;
-  pb.authStore.clear();
   localStorage.removeItem('token');
+  localStorage.removeItem('refresh_token');
 }
 
-export { pb };
+export async function getCurrentUser() {
+  const res = await apiFetch('/auth/me');
+  if (!res.ok) return null;
+  return res.json();
+}
+
+export async function getAgents() {
+  const res = await apiFetch('/agents/');
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function getMarketPulse() {
+  const res = await fetch(`${API_BASE}/api/v1/market/pulse`);
+  if (!res.ok) return {};
+  return res.json();
+}
+
+export async function getPortfolio() {
+  const res = await apiFetch('/portfolio/');
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function getTrades() {
+  const res = await apiFetch('/trades/');
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function getSignals() {
+  const res = await apiFetch('/signals/');
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export { getToken as getAuthToken2 };
