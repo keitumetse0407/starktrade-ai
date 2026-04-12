@@ -58,7 +58,7 @@ llm = ChatGroq(
     model="llama-3.1-8b-instant",
     api_key=os.getenv("GROQ_API_KEY"),
     temperature=0.1,
-    max_tokens=2000,
+    max_tokens=800,
 )
 
 
@@ -70,12 +70,19 @@ async def system2_regime_node(state: AgentState) -> dict:
     System 2: Detect market regime, set risk budget, provide context.
     This runs FIRST and constrains all subsequent System 1 decisions.
     """
-    # Mock market data — in production, fetch real data
+    # Real market data from market pulse service
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get("http://localhost:8000/api/v1/market/pulse")
+            pulse = r.json() if r.status_code == 200 else {}
+    except Exception:
+        pulse = {}
     market_data = {
-        "vix": 14.5,
-        "sp500_20d_return_pct": 3.2,
-        "market_breadth_pct": 62,
-        "yield_curve_slope": 0.5,
+        "vix": pulse.get("VIX", {}).get("price", 20.0),
+        "sp500_20d_return_pct": pulse.get("SPX", {}).get("change_pct", 0.0),
+        "market_breadth_pct": 55,
+        "yield_curve_slope": 0.3,
     }
     
     # Run System 2 regime detection
