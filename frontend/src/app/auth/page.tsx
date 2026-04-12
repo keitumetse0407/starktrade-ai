@@ -14,15 +14,15 @@ export default function AuthPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('https://starktrade-ai.duckdns.org/api/collections/users/auth-with-password', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org'}/api/v1/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identity: email, password })
+        body: JSON.stringify({ email, password })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Login failed');
       
-      localStorage.setItem('pocketbase_token', data.token);
+      localStorage.setItem('token', data.access_token); localStorage.setItem('refresh_token', data.refresh_token);
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Login failed');
@@ -34,10 +34,10 @@ export default function AuthPage() {
     setError('');
     setLoading(true);
     try {
-      const res = await fetch('https://starktrade-ai.duckdns.org/api/collections/users/records', {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org'}/api/v1/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, passwordConfirm: password, name: email.split('@')[0] })
+        body: JSON.stringify({ email, password, full_name: email.split('@')[0] })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Signup failed');
