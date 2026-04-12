@@ -1,3 +1,4 @@
+import os
 """
 LangGraph Multi-Agent Orchestrator — HRM-Enhanced
 ==================================================
@@ -55,7 +56,7 @@ class AgentState(TypedDict):
 
 llm = ChatGroq(
     model="llama-3.1-8b-instant",
-    api_key=settings.OPENAI_API_KEY,
+    api_key=os.getenv("GROQ_API_KEY"),
     temperature=0.1,
     max_tokens=2000,
 )

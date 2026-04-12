@@ -58,3 +58,18 @@ async def update_agent_weight(
     agent.weight = weight
     await db.flush()
     return {"status": "updated", "agent_id": agent_id, "new_weight": weight}
+
+
+@router.post("/analyze")
+async def analyze(
+    payload: dict,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Trigger HRM multi-agent analysis."""
+    try:
+        from app.agents.orchestrator import run_pipeline
+        result = await run_pipeline(payload.get("symbol", "XAUUSD"))
+        return {"status": "complete", "result": result}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
