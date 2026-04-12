@@ -78,36 +78,41 @@ def _fallback_yfinance(symbol: str, timeframe: str, limit: int):
 
 
 async def get_market_pulse():
-    """Get live market indices."""
-    indices = {
-        "SPX": "^GSPC",
-        "NDX": "^IXIC",
-        "BTC": "BTC-USD",
-        "ETH": "ETH-USD",
-        "GLD": "GLD",
-        "VIX": "^VIX",
-    }
-
-    pulse = {}
+    """Get live market data from free APIs."""
+    pulse = {k: {"price": 0, "change_pct": 0} for k in ["SPX", "NDX", "BTC", "ETH", "GLD", "VIX"]}
     try:
-        import yfinance as yf
-        tickers = yf.Tickers(" ".join(indices.values()), session=_yf_session)
-        for name, symbol in indices.items():
-            try:
-                info = tickers.tickers[symbol].fast_info
-                price = info.get("lastPrice", 0) or 0
-                prev = info.get("previousClose", 0) or 1
-                change_pct = ((price - prev) / prev) * 100 if prev else 0
-                pulse[name] = {
-                    "price": round(price, 2),
-                    "change_pct": round(change_pct, 2),
-                }
-            except Exception:
-                pulse[name] = {"price": 0, "change_pct": 0}
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Crypto from CoinGecko (free, no key)
+            r = await client.get(
+                "https://api.coingecko.com/api/v3/simple/price",
+                params={"ids": "bitcoin,ethereum", "vs_currencies": "usd", "include_24hr_change": "true"}
+            )
+            if r.status_code == 200:
+                data = r.json()
+                pulse["BTC"] = {"price": round(data.get("bitcoin", {}).get("usd", 0), 2), "change_pct": round(data.get("bitcoin", {}).get("usd_24h_change", 0), 2)}
+                pulse["ETH"] = {"price": round(data.get("ethereum", {}).get("usd", 0), 2), "change_pct": round(data.get("ethereum", {}).get("usd_24h_change", 0), 2)}
     except Exception:
-        for name in indices:
-            pulse[name] = {"price": 0, "change_pct": 0}
-
+        pass
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Stocks from Yahoo Finance v8 (direct API, less blocked)
+            symbols = {"SPX": "%5EGSPC", "NDX": "%5EIXIC", "GLD": "GLD", "VIX": "%5EVIX"}
+            for name, sym in symbols.items():
+                try:
+                    r = await client.get(
+                        f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}",
+                        headers={"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36"},
+                        timeout=8.0
+                    )
+                    if r.status_code == 200:
+                        meta = r.json()["chart"]["result"][0]["meta"]
+                        price = float(meta.get("regularMarketPrice", 0))
+                        prev = float(meta.get("chartPreviousClose", 1) or 1)
+                        pulse[name] = {"price": round(price, 2), "change_pct": round(((price - prev) / prev) * 100, 2)}
+                except Exception:
+                    pass
+    except Exception:
+        pass
     return pulse
 
 
