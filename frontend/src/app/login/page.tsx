@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Zap, Eye, EyeOff } from 'lucide-react';
-import { pb } from '@/lib/api';
+
 
 export default function LoginPage() {
   const router = useRouter();
