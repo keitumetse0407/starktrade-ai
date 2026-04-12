@@ -19,6 +19,13 @@ import (
 	"github.com/gorilla/mux"
 )
 
+
+type riskAdapt struct{ e *risk.Engine }
+func (a *riskAdapt) Status() map[string]interface{} { return a.e.Status() }
+func (a *riskAdapt) CheckOrder(o engine.Order) (bool, string) {
+	return a.e.CheckOrder(risk.Order{ID: o.ID, Symbol: o.Symbol, Side: o.Side, Quantity: o.Quantity, Price: o.Price})
+}
+
 func main() {
 	cfg := &engine.Config{
 		Port:          getEnv("PORT", "8081"),
@@ -29,9 +36,11 @@ func main() {
 		DailyLossLimit: 0.03, // 3% daily stop
 	}
 
-	riskEngine := risk.NewEngine(cfg)
+	riskCfg := &risk.Config{MaxPosition: cfg.MaxPosition, MaxDrawdown: cfg.MaxDrawdown, DailyLossLimit: cfg.DailyLossLimit}
+	riskEngine := risk.NewEngine(riskCfg)
 	wsHub := websocket.NewHub()
-	tradingEngine := engine.New(cfg, riskEngine, wsHub)
+	riskAdapt := &riskAdapt{e: riskEngine}
+	tradingEngine := engine.New(cfg, riskAdapt, wsHub)
 
 	// Start background goroutines
 	ctx, cancel := context.WithCancel(context.Background())

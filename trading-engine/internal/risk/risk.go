@@ -9,14 +9,6 @@ import (
 	"time"
 )
 
-// Order is a minimal order type for risk checks.
-type Order struct {
-	ID       string  `json:"id"`
-	Symbol   string  `json:"symbol"`
-	Side     string  `json:"side"`
-	Quantity float64 `json:"quantity"`
-	Price    float64 `json:"price,omitempty"`
-}
 
 // Engine implements risk checks.
 type Engine struct {
@@ -49,6 +41,15 @@ func NewEngine(cfg *Config) *Engine {
 		peakValue:      100000.0,
 		sectorExposure: make(map[string]float64),
 	}
+}
+
+// Order mirrors engine.Order for risk checks.
+type Order struct {
+	ID       string  `json:"id"`
+	Symbol   string  `json:"symbol"`
+	Side     string  `json:"side"`
+	Quantity float64 `json:"quantity"`
+	Price    float64 `json:"price,omitempty"`
 }
 
 // CheckOrder validates an order against risk rules.
