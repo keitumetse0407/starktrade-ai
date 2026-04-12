@@ -24,7 +24,7 @@ import json
 from typing import TypedDict, Annotated, Sequence
 from datetime import datetime, timezone
 from langgraph.graph import StateGraph, END
-from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
 from app.core.config import settings
 from app.agents.hrm_engine import (
@@ -53,8 +53,8 @@ class AgentState(TypedDict):
     messages: list
 
 
-llm = ChatOpenAI(
-    model=settings.OPENAI_MODEL,
+llm = ChatGroq(
+    model="llama-3.1-8b-instant",
     api_key=settings.OPENAI_API_KEY,
     temperature=0.1,
     max_tokens=2000,

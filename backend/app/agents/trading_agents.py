@@ -111,8 +111,8 @@ Respond ONLY with JSON:
     
     async def _openai_analysis(self, market_data: dict) -> dict:
         """Real OpenAI analysis."""
-        import openai
-        client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
+        from groq import AsyncGroq
+        client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
         
         prompt = f"""Analyze this market data and provide a trading recommendation.
 
@@ -152,8 +152,8 @@ Respond ONLY with JSON:
         }
         
         try:
-            import openai
-            client = openai.AsyncOpenAI(api_key=OPENAI_API_KEY)
+            from groq import AsyncGroq
+            client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
             
             prompt = f"""Analyze this market data and provide a trading recommendation.
 

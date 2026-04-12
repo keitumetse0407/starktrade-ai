@@ -1,6 +1,7 @@
 """Pydantic schemas for request/response validation."""
 from datetime import datetime
-from typing import Optional, List
+from uuid import UUID as PyUUID
+from typing import List, Optional, Union
 from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 
@@ -27,7 +28,7 @@ class TokenResponse(BaseModel):
 
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    id: str
+    id: Union[PyUUID, str]
     email: str
     full_name: Optional[str]
     role: str
@@ -43,7 +44,7 @@ class UserResponse(BaseModel):
 # ============================================================
 class PortfolioResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    id: str
+    id: Union[PyUUID, str]
     name: str
     total_value: float
     cash_balance: float
@@ -71,7 +72,7 @@ class TradeCreate(BaseModel):
 
 class TradeResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    id: str
+    id: Union[PyUUID, str]
     symbol: str
     asset_class: str
     side: str
@@ -93,7 +94,7 @@ class TradeResponse(BaseModel):
 # ============================================================
 class AgentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    id: str
+    id: Union[PyUUID, str]
     name: str
     persona: str
     description: Optional[str]
@@ -108,8 +109,8 @@ class AgentResponse(BaseModel):
 
 class AgentDecisionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    id: str
-    agent_id: str
+    id: Union[PyUUID, str]
+    agent_id: Union[PyUUID, str]
     decision_type: str
     symbol: Optional[str]
     reasoning: str
@@ -141,7 +142,7 @@ class PredictionMarketCreate(BaseModel):
 
 class PredictionMarketResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    id: str
+    id: Union[PyUUID, str]
     title: str
     description: Optional[str]
     category: str
