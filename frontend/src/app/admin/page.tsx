@@ -104,9 +104,9 @@ export default function AdminPage() {
   const loadData = async (t: string) => {
     try {
       const [statsRes, usersRes, configRes] = await Promise.all([
-        fetch((process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org') + '/api/v1/admin/stats', { headers: { Authorization: 'Bearer ${t}` } }),
-        fetch((process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org') + '/api/v1/admin/users', { headers: { Authorization: 'Bearer ${t}` } }),
-        fetch((process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org') + '/api/v1/admin/config', { headers: { Authorization: 'Bearer ${t}` } }),
+        fetch((process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org') + '/api/v1/admin/stats', { headers: { Authorization: 'Bearer ' + t } }),
+        fetch((process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org') + '/api/v1/admin/users', { headers: { Authorization: 'Bearer ' + t } }),
+        fetch((process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org') + '/api/v1/admin/config', { headers: { Authorization: 'Bearer ' + t } }),
       ]);
 
       if (statsRes.status === 403) {
