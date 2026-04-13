@@ -85,7 +85,7 @@ export default function OnboardingPage() {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (token) {
       // Verify token is still valid
-      apiFetch('/api/v1/auth/me')
+      apiFetch('/auth/me')
         .then(res => {
           if (res.ok) {
             router.push('/dashboard');
@@ -121,7 +121,7 @@ export default function OnboardingPage() {
     setLoading(true);
 
     try {
-      const res = await apiFetch('/api/v1/auth/register', {
+      const res = await apiFetch('/auth/register', {
         method: 'POST',
         body: JSON.stringify({
           email,
@@ -140,7 +140,7 @@ export default function OnboardingPage() {
       const tokenData = await res.json();
       setAuthToken(tokenData.access_token);
 
-      const meRes = await apiFetch('/api/v1/auth/me');
+      const meRes = await apiFetch('/auth/me');
       const me = await meRes.json();
       if (me.role === 'admin') {
         setIsAdmin(true);
@@ -158,7 +158,7 @@ export default function OnboardingPage() {
     setLoading(true);
 
     try {
-      const res = await apiFetch('/api/v1/auth/login', {
+      const res = await apiFetch('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });

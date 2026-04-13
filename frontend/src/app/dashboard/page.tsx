@@ -157,7 +157,7 @@ export default function DashboardPage() {
     setLoading(true);
     setError('');
     try {
-      const userRes = await apiFetch('/api/v1/auth/me');
+      const userRes = await apiFetch('/auth/me');
       if (!userRes.ok) {
         clearAuthToken();
         router.push('/onboarding');
@@ -169,10 +169,10 @@ export default function DashboardPage() {
       setIsConnected(true);
 
       const [portfolioRes, tradesRes, agentsRes, predictionsRes] = await Promise.all([
-        apiFetch('/api/v1/portfolio/').catch(() => null),
-        apiFetch('/api/v1/trades/').catch(() => null),
-        apiFetch('/api/v1/agents/').catch(() => null),
-        apiFetch('/api/v1/predictions/markets').catch(() => null),
+        apiFetch('/portfolio/').catch(() => null),
+        apiFetch('/trades/').catch(() => null),
+        apiFetch('/agents/').catch(() => null),
+        apiFetch('/predictions/markets').catch(() => null),
       ]);
 
       if (portfolioRes?.ok) {
