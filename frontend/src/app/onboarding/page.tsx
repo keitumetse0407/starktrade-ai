@@ -327,15 +327,9 @@ export default function OnboardingPage() {
                 </div>
 
                 {/* Terms checkbox */}
-                <label className="flex items-start gap-3 cursor-pointer p-4 rounded-xl hover:bg-white/[0.02] transition-colors group">
+                <label className="flex items-start gap-3 cursor-pointer p-4 rounded-xl hover:bg-white/[0.02] transition-colors group" onClick={() => setAgreeTerms(!agreeTerms)}>
                   <div className="relative mt-0.5">
-                    <input
-                      type="checkbox"
-                      checked={agreeTerms}
-                      onChange={(e) => setAgreeTerms(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-5 h-5 rounded-md border border-white/10 bg-white/[0.02] peer-checked:border-blue-500 peer-checked:bg-blue-500/20 transition-all flex items-center justify-center">
+                    <div className="w-5 h-5 rounded-md border border-white/10 bg-white/[0.02] transition-all flex items-center justify-center" style={{borderColor: agreeTerms ? '#3b82f6' : undefined, backgroundColor: agreeTerms ? 'rgba(59,130,246,0.2)' : undefined}}>
                       {agreeTerms && <Check className="w-3 h-3 text-blue-500" />}
                     </div>
                   </div>
