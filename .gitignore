@@ -72,3 +72,5 @@ engine/memory/
 engine/models/*.pkl
 .vercel
 .env*.local
+*.dat
+*.dir
