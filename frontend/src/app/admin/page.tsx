@@ -104,9 +104,9 @@ export default function AdminPage() {
   const loadData = async (t: string) => {
     try {
       const [statsRes, usersRes, configRes] = await Promise.all([
-        fetch('/api/v1/admin/stats', { headers: { Authorization: `Bearer ${t}` } }),
-        fetch('/api/v1/admin/users', { headers: { Authorization: `Bearer ${t}` } }),
-        fetch('/api/v1/admin/config', { headers: { Authorization: `Bearer ${t}` } }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org'}/api/v1/admin/stats', { headers: { Authorization: `Bearer ${t}` } }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org'}/api/v1/admin/users', { headers: { Authorization: `Bearer ${t}` } }),
+        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org'}/api/v1/admin/config', { headers: { Authorization: `Bearer ${t}` } }),
       ]);
 
       if (statsRes.status === 403) {
@@ -125,7 +125,7 @@ export default function AdminPage() {
 
   const updateConfig = async (key: string, value: string) => {
     if (!token) return;
-    await fetch(`/api/v1/admin/config/${key}?value=${encodeURIComponent(value)}`, {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org'}/api/v1/admin/config/${key}?value=${encodeURIComponent(value)}`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -134,7 +134,7 @@ export default function AdminPage() {
 
   const updateUserRole = async (userId: string, newRole: string) => {
     if (!token) return;
-    await fetch(`/api/v1/admin/users/${userId}/role?new_role=${newRole}`, {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org'}/api/v1/admin/users/${userId}/role?new_role=${newRole}`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -143,7 +143,7 @@ export default function AdminPage() {
 
   const toggleUserActive = async (userId: string) => {
     if (!token) return;
-    await fetch(`/api/v1/admin/users/${userId}/toggle-active`, {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org'}/api/v1/admin/users/${userId}/toggle-active`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` },
     });

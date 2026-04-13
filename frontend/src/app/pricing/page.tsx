@@ -66,7 +66,7 @@ export default function PricingPage() {
       }
 
       // Call backend to create payment
-      const response = await fetch('/api/payfast/create', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org'}/api/payfast/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
