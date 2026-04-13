@@ -191,8 +191,14 @@ export default function DashboardPage() {
 
   const toggleAutoTrading = async () => {
     const newState = !autoTrading;
-    setAutoTrading(newState);
-    notify.autopilotToggle(newState);
+    try {
+      const endpoint = newState ? '/autotrading/start' : '/autotrading/stop';
+      await apiFetch(endpoint, { method: 'POST' });
+      setAutoTrading(newState);
+      notify.autopilotToggle(newState);
+    } catch (err) {
+      notify.error('Failed to toggle autopilot');
+    }
   };
 
   const handleLogout = () => {
