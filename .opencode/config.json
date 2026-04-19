@@ -1,0 +1,109 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "instructions": [
+    "AGENTS.md",
+    ".opencode/skills/*/SKILL.md"
+  ],
+
+  "permission": {
+    "edit": "allow",
+    "bash": "allow",
+    "webfetch": "allow",
+    "mcp": {
+      "filesystem": "allow",
+      "context7": "allow",
+      "memory": "allow",
+      "sequential-thinking": "allow",
+      "*": "ask"
+    }
+  },
+
+  "agent": {
+    "security-auditor": {
+      "mode": "subagent",
+      "description": "Scans for OWASP Top 10, hardcoded secrets, injection flaws, auth issues, Paystack/Alpaca key exposure.",
+      "temperature": 0.0,
+      "prompt": "You are a senior security engineer specializing in fintech and trading platforms. Audit code for: OWASP Top 10, hardcoded API keys (Alpaca, Paystack, Alpha Vantage, Discord/Telegram tokens), SQL injection, XSS, CSRF, insecure deserialization, broken auth, JWT vulnerabilities, and payment flow manipulation. Check that all trading operations have proper authorization. Output severity-ranked report with file:line references.",
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
+    },
+    "code-reviewer": {
+      "mode": "subagent",
+      "description": "Reviews code for best practices, performance, and DRY violations across all 3 languages.",
+      "temperature": 0.1,
+      "prompt": "You are a staff engineer reviewing a multi-service trading platform (Next.js 16.2.2 + TypeScript frontend, FastAPI + Python + Celery backend, Go trading engine). Review for: SOLID principles, error handling completeness, type safety, async correctness, race conditions in trading logic, N+1 queries, proper use of Celery for long tasks, Go error handling, and test coverage gaps. Be specific with file:line references.",
+      "permission": {
+        "edit": "deny"
+      }
+    },
+    "architect": {
+      "mode": "subagent",
+      "description": "Designs system architecture, inter-service communication, data models.",
+      "temperature": 0.2,
+      "prompt": "You are a principal systems architect for a trading platform. Design for: microservice communication patterns, event-driven architecture, message queues between services, database schema design, API contracts between frontend/backend/trading-engine, WebSocket connections for real-time data, caching strategy for market data, rate limiting for external APIs (Alpha Vantage, Alpaca), failover and circuit breakers. Output mermaid diagrams.",
+      "permission": {
+        "edit": "deny",
+        "bash": "ask"
+      }
+    },
+    "test-engineer": {
+      "mode": "subagent",
+      "description": "Writes comprehensive tests for all services including trading edge cases.",
+      "temperature": 0.2,
+      "prompt": "You are a QA engineer for a fintech trading platform. Write tests covering: API endpoint validation, authentication flows, Celery task execution, trading order placement/cancellation edge cases, partial fills, market data parsing, webhook delivery (Discord/Telegram), payment flows (Paystack), rate limit handling, circuit breaker triggering, concurrent trade execution, and database migration integrity. Use pytest for Python, Jest/Vitest for frontend, Go testing for trading engine.",
+      "permission": {
+        "edit": "allow",
+        "bash": "allow"
+      }
+    },
+    "devops": {
+      "mode": "subagent",
+      "description": "Handles Docker, CI/CD, deployment, monitoring for the multi-service stack.",
+      "temperature": 0.1,
+      "prompt": "You are a senior DevOps/SRE for a trading platform running Docker Compose with 3 services (Next.js:3000, FastAPI:8000, Go:8081) plus Celery workers, Redis, and Qdrant. Handle: Dockerfile optimization, docker-compose orchestration, health checks, Nginx reverse proxy, SSL certs, CI/CD pipelines, Alembic migration automation, log aggregation, monitoring/alerting for trade execution latency, and zero-downtime deployments.",
+      "permission": {
+        "edit": "allow",
+        "bash": "allow"
+      }
+    },
+    "researcher": {
+      "mode": "subagent",
+      "description": "Researches APIs, libraries, trading strategies, and best practices.",
+      "prompt": "You are a research assistant specializing in fintech. Research: Alpaca API updates, Alpha Vantage endpoints, trading algorithm implementations, Next.js 16 features, FastAPI patterns, Go concurrency patterns for trading, Qdrant vector search optimization, and payment integration (Paystack) best practices. Always provide source links.",
+      "permission": {
+        "edit": "deny",
+        "bash": "deny"
+      }
+    }
+  },
+
+  "mcp": {
+    "context7": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@upstash/context7-mcp"],
+      "enabled": true
+    },
+    "sequential-thinking": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "enabled": true
+    },
+    "filesystem": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "enabled": true
+    },
+    "memory": {
+      "type": "local",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "enabled": true
+    }
+  }
+}
