@@ -101,13 +101,13 @@ export default function AdminPage() {
     }
   }, []);
 
-  const loadData = async (t: string) => {
-    try {
-      const [statsRes, usersRes, configRes] = await Promise.all([
-        fetch((process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org') + '/api/v1/admin/stats', { headers: { Authorization: 'Bearer ' + t } }),
-        fetch((process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org') + '/api/v1/admin/users', { headers: { Authorization: 'Bearer ' + t } }),
-        fetch((process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org') + '/api/v1/admin/config', { headers: { Authorization: 'Bearer ' + t } }),
-      ]);
+   const loadData = async (t: string) => {
+     try {
+       const [statsRes, usersRes, configRes] = await Promise.all([
+         fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org'}/api/v1/admin/stats`, { headers: { Authorization: 'Bearer ' + t } }),
+         fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org'}/api/v1/admin/users`, { headers: { Authorization: 'Bearer ' + t } }),
+         fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org'}/api/v1/admin/config`, { headers: { Authorization: 'Bearer ' + t } }),
+       ]);
 
       if (statsRes.status === 403) {
         setError('Admin access required. Login with an admin account.');
@@ -123,32 +123,32 @@ export default function AdminPage() {
     }
   };
 
-  const updateConfig = async (key: string, value: string) => {
+    const updateConfig = async (key: string, value: string) => {
     if (!token) return;
-    await fetch((process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org') + '/api/v1/admin/config/${key}?value=${encodeURIComponent(value)}', {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org'}/api/v1/admin/config/${key}?value=${encodeURIComponent(value)}`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` },
     });
     loadData(token);
   };
 
-  const updateUserRole = async (userId: string, newRole: string) => {
+    const updateUserRole = async (userId: string, newRole: string) => {
     if (!token) return;
-    await fetch((process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org') + '/api/v1/admin/users/${userId}/role?new_role=${newRole}', {
+    await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org'}/api/v1/admin/users/${userId}/role?new_role=${newRole}`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}` },
     });
     loadData(token);
   };
 
-  const toggleUserActive = async (userId: string) => {
-    if (!token) return;
-    await fetch((process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org') + '/api/v1/admin/users/${userId}/toggle-active', {
-      method: 'PUT',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    loadData(token);
-  };
+   const toggleUserActive = async (userId: string) => {
+     if (!token) return;
+     await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org'}/api/v1/admin/users/${userId}/toggle-active`, {
+       method: 'PUT',
+       headers: { Authorization: `Bearer ${token}` },
+     });
+     loadData(token);
+   };
 
   if (!isAuthenticated) {
     return (

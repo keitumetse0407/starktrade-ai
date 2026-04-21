@@ -100,7 +100,7 @@ class SignalOrchestrator:
     """
 
     def __init__(self, account_balance: float = 100_000):
-        self.data = GoldDataCollector("GC=F")
+        self.data = GoldDataCollector("GLD")
         self.indicators = TechnicalIndicators()
         self.regime = RegimeDetector()
         self.quant = QuantAgent()

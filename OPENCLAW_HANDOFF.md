@@ -270,7 +270,15 @@ uvicorn app.main:app --reload --port 8000  # Dev server
 
 # Signal Engine (standalone, no backend needed)
 cd /root/starktrade-ai
-python3 -c "from engine.orchestrator import SignalOrchestrator; import asyncio; s = asyncio.run(SignalOrchestrator().generate_signal()); print(s.message)"
+python3 -c "
+import sys
+sys.path.append('./backend')
+from app.agents.orchestrator import run_pipeline
+import asyncio
+result = asyncio.run(run_pipeline('XAUUSD'))
+# For manual testing, we can print the final decision
+print(result.get('final_decision', {}))
+"
 
 # Discord Test
 python3 test_discord.py "YOUR_WEBHOOK_URL"

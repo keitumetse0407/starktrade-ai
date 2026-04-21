@@ -46,7 +46,7 @@ class FeedbackLoop:
 
     def __init__(self, memory: Optional[ContextMemory] = None):
         self.memory = memory or ContextMemory.load()
-        self.data = GoldDataCollector("GC=F")
+        self.data = GoldDataCollector("GLD")
         self.indicators = TechnicalIndicators()
 
     def resolve_active_signalss(self) -> List[Dict]:

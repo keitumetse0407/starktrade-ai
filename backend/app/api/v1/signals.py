@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api/v1/signals", tags=["signals"])
 # ─── Pydantic Schemas ─────────────────────────────────────────────────
 
 class SignalGenerateRequest(BaseModel):
-    symbol: str = Field(default="GC=F", description="Yahoo Finance ticker (GC=F = Gold Futures)")
+    symbol: str = Field(default="GLD", description="Yahoo Finance ticker (GLD = SPDR Gold Shares)")
     force: bool = Field(default=False, description="Force regeneration even if recent signal exists")
 
 

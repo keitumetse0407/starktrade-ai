@@ -24,7 +24,7 @@ _YAHOO_CHART = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
 
 # Yahoo symbol → Twelve Data symbol mapping
 _TWELVE_MAP = {
-    "GC=F": "XAU/USD",
+    "GLD": "XAU/USD",
     "XAUUSD=X": "XAU/USD",
     "SI=F": "XAG/USD",
     "CL=F": "WTI/USD",
@@ -130,7 +130,7 @@ class GoldDataCollector:
       3. yfinance (library with browser session)
     """
 
-    def __init__(self, symbol: str = "GC=F"):
+    def __init__(self, symbol: str = "GLD"):
         self.symbol = symbol
         self._twelve_symbol = _TWELVE_MAP.get(symbol, symbol.replace("=F", "/USD"))
 

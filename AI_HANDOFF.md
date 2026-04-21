@@ -84,7 +84,7 @@ It generates **one actionable signal per day** at 07:00 SAST, delivered to a pri
 
 | File | Purpose | Status |
 |---|---|---|
-| `engine/orchestrator.py` | Main brain — coordinates all agents, consensus, formatting | ✅ Complete |
+| `backend/app/agents/orchestrator.py` | Main brain — coordinates all agents, consensus, formatting | ✅ Complete |
 | `engine/context_memory.py` | Persistent memory — signal log, agent scoreboard, market journal | ✅ Complete |
 | `engine/regime_detector.py` | Market state: TRENDING/BREAKOUT/RANGE/ROTATIONAL | ✅ Complete |
 | `engine/quant_agent.py` | ML ensemble (RF + GB) with 200 EMA trend filter | ✅ Complete, trained |
@@ -233,9 +233,13 @@ Day 2: Tomorrow's signal uses updated weights
 ```bash
 cd /root/starktrade-ai
 python3 -c "
-from engine.orchestrator import SignalOrchestrator
-signal = SignalOrchestrator().generate_signal()
-print(signal.message)
+import sys
+sys.path.append('./backend')
+from app.agents.orchestrator import run_pipeline
+import asyncio
+result = asyncio.run(run_pipeline('XAUUSD'))
+# For manual testing, we can print the final decision
+print(result.get('final_decision', {}))
 "
 ```
 

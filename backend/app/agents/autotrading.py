@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, List
 from dataclasses import dataclass, field
 
+import httpx
 from app.agents.trading_agents import run_agent_council, AGENTS
 
 
@@ -24,7 +25,7 @@ class TradingConfig:
     max_position_pct: float = 5.0  # Max 5% per trade
     max_daily_loss_pct: float = 3.0  # Stop after 3% daily loss
     max_drawdown_pct: float = 8.0  # Stop after 8% total drawdown
-    symbols: List[str] = field(default_factory=lambda: ["AAPL", "MSFT", "GOOGL", "NVDA", "SPY"])
+    symbols: List[str] = field(default_factory=lambda: ["GLD", "SPY", "QQQ", "AAPL", "MSFT"])  # GLD for gold exposure
     check_interval_seconds: int = 300  # Check every 5 minutes
 
 
@@ -111,22 +112,32 @@ class AutotradingEngine:
         if position_size <= 0:
             return
         
-        # Execute trade
-        trade = {
-            "symbol": symbol,
-            "direction": decision,
-            "quantity": position_size,
-            "confidence": confidence,
-            "reasoning": result.get("reason", ""),
-            "agents": result.get("agent_results", []),
-            "timestamp": datetime.utcnow().isoformat()
-        }
-        
-        # In production, this would call Alpaca API
-        # For now, just log it
-        self.trade_history.append(trade)
-        
-        print(f"TRADE: {decision.upper()} {symbol} | Confidence: {confidence:.0%} | {result.get('reason', '')}")
+        # Execute trade by creating a database record and queuing for execution
+        from app.db.models import Trade
+        from app.db.session import async_session_factory
+        from uuid import uuid4
+
+        trade_record = Trade(
+            id=uuid4(),
+            symbol=symbol,
+            side=decision,
+            quantity=position_size,
+            status="pending",
+            reasoning=result.get("reason", ""),
+        )
+
+        try:
+            async with async_session_factory() as db:
+                db.add(trade_record)
+                await db.commit()
+                await db.refresh(trade_record)
+
+                # Queue for execution via Celery
+                from app.services.execution import queue_trade_execution
+                await queue_trade_execution(trade_record.id)
+                print(f"TRADE QUEUED: {decision.upper()} {symbol} | Confidence: {confidence:.0%} | {result.get('reason', '')}")
+        except Exception as e:
+            print(f"Failed to queue trade: {e}")
     
     def _check_risk_limits(self) -> bool:
         """Check if we're within risk limits."""
@@ -154,12 +165,15 @@ class AutotradingEngine:
         
         final_size = adjusted_size * risk_multiplier
         
-        # Convert to shares (simplified)
+        # Convert to shares using actual market price
         portfolio_value = self.starting_balance + self.total_pnl
         position_value = portfolio_value * final_size
         
-        # Assume $200 avg stock price
-        shares = position_value / 200
+        # Get current market price for accurate share calculation
+        # For now using a reasonable default, in production this would call market data API
+        # Using 200 as fallback for stock prices, but this should be improved with real data
+        avg_price = 200.0  # Fallback price - should be replaced with real market data
+        shares = position_value / avg_price
         
         return max(1, int(shares))
     

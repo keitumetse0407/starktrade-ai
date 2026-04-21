@@ -30,7 +30,7 @@ async def _generate_and_send():
     try:
         # 1. Generate signal
         from app.agents.orchestrator import run_pipeline
-        result = await run_pipeline("GC=F")
+        result = await run_pipeline("GLD")
         signal = type('Signal', (), {'action': result.get('final_decision', {}).get('action', 'HOLD'), 'symbol': 'XAUUSD', 'confidence': 0.7})()
 
         if not signal or not signal.action:
