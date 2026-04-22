@@ -29,8 +29,12 @@ This creates temporal reasoning across timescales:
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional
 from datetime import datetime, timezone
+
+try:
+    from typing import Optional
+except ImportError:
+    from typing_extensions import Optional
 
 
 # ============================================================

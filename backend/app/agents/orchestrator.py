@@ -22,8 +22,13 @@ Flow: TRIGGER → SYSTEM 2 REGIME CHECK → PARALLEL SYSTEM 1 AGENTS →
 """
 
 import json
-from typing import TypedDict, Annotated, Sequence
+from typing import TypedDict, Sequence
 from datetime import datetime, timezone
+
+try:
+    from typing import Annotated
+except ImportError:
+    from typing_extensions import Annotated
 from langgraph.graph import StateGraph, END
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage
