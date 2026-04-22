@@ -1,127 +1,62 @@
 """
 WebSocket Routes — Real-Time Agent Feed
-=========================================
+========================================
 The "wow" feature. Investors and users see AI agents working in real-time.
 
-Endpoints:
-- /api/v1/ws/live — Real-time market data + portfolio updates
-- /api/v1/ws/agents — Agent activity feed (decisions, reasoning, status)
+Broadcasts:
+- /api/v1/ws/agents — Agent activity, votes, regime, consensus
+- /api/v1/ws/live — Market ticks, portfolio updates, trade executions
+- /api/v1/ws/state — Current agent state (reconciliation on reconnect)
 """
 
 import asyncio
 import json
 from datetime import datetime, timezone
-from typing import Dict, Set
+from typing import Dict, Set, Optional
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, status
 from jose import JWTError, jwt
 from app.core.config import settings
 from app.db.session import async_session_factory
-from app.db.models import User
+from app.db.models import User, Signal
+from app.api.v1.ws import manager
 
 router = APIRouter()
 
 
-# ============================================================
-# CONNECTION MANAGER
-# ============================================================
-class ConnectionManager:
-    """Manages WebSocket connections with room-based broadcasting."""
-    
-    def __init__(self):
-        # Room → set of websockets
-        self.rooms: Dict[str, Set[WebSocket]] = {
-            "live": set(),
-            "agents": set(),
-        }
-        # Track authenticated users
-        self.user_sessions: Dict[WebSocket, dict] = {}
-    
-    async def connect(self, websocket: WebSocket, room: str, user_info: dict = None):
-        await websocket.accept()
-        if room not in self.rooms:
-            self.rooms[room] = set()
-        self.rooms[room].add(websocket)
-        if user_info:
-            self.user_sessions[websocket] = user_info
-        print(f"WS connected: {room} (total: {len(self.rooms[room])})")
-    
-    def disconnect(self, websocket: WebSocket, room: str):
-        if room in self.rooms:
-            self.rooms[room].discard(websocket)
-        self.user_sessions.pop(websocket, None)
-        print(f"WS disconnected: {room} (remaining: {len(self.rooms.get(room, set()))})")
-    
-    async def broadcast(self, room: str, message: dict):
-        """Send message to all connections in a room."""
-        if room not in self.rooms:
-            return
-        
-        dead_connections = set()
-        message_str = json.dumps(message, default=str)
-        
-        for ws in self.rooms[room]:
-            try:
-                await ws.send_text(message_str)
-            except Exception:
-                dead_connections.add(ws)
-        
-        # Clean up dead connections
-        for ws in dead_connections:
-            self.rooms[room].discard(ws)
-            self.user_sessions.pop(ws, None)
-    
-    async def send_personal(self, websocket: WebSocket, message: dict):
-        """Send message to a specific connection."""
-        try:
-            await websocket.send_text(json.dumps(message, default=str))
-        except Exception:
-            pass
-    
-    def get_room_size(self, room: str) -> int:
-        return len(self.rooms.get(room, set()))
+AGENT_DEFINITIONS = [
+    {"id": "quant", "name": "Quant Agent", "role": "ML Price Prediction", "emoji": "📊"},
+    {"id": "sentiment", "name": "Sentiment Agent", "role": "News & Social Sentiment", "emoji": "🗞️"},
+    {"id": "pattern", "name": "Pattern Agent", "role": "Technical Patterns", "emoji": "📈"},
+    {"id": "risk", "name": "Risk Agent", "role": "Portfolio Risk", "emoji": "🛡️"},
+    {"id": "regime", "name": "Regime Detector", "role": "Market Regime", "emoji": "🌊"},
+    {"id": "orchestrator", "name": "Orchestrator", "role": "Consensus Engine", "emoji": "⚡"},
+    {"id": "context", "name": "Context Memory", "role": "Persistent Learning", "emoji": "🧠"},
+]
 
 
-manager = ConnectionManager()
-
-
-# ============================================================
-# AUTH HELPER
-# ============================================================
 async def authenticate_ws(token: str) -> dict | None:
     """Authenticate WebSocket connection via JWT token."""
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         if payload.get("type") != "access":
             return None
-        
         user_id = payload.get("sub")
         if not user_id:
             return None
-        
         return {"user_id": user_id, "token_payload": payload}
     except JWTError:
         return None
 
 
-# ============================================================
-# LIVE MARKET DATA WEBSOCKET
-# ============================================================
 @router.websocket("/live")
 async def websocket_live(websocket: WebSocket):
-    """
-    Real-time market data + portfolio updates.
-    
-    Client sends: {"type": "subscribe", "symbols": ["BTC", "ETH", "NVDA"]}
-    Server sends: Market ticks, portfolio updates, trade notifications
-    """
-    # Authenticate
+    """Real-time market data + portfolio updates."""
     token = websocket.query_params.get("token")
     user_info = await authenticate_ws(token) if token else None
     
     await manager.connect(websocket, "live", user_info)
     
     try:
-        # Send initial connection confirmation
         await manager.send_personal(websocket, {
             "type": "connected",
             "room": "live",
@@ -129,10 +64,8 @@ async def websocket_live(websocket: WebSocket):
             "authenticated": user_info is not None,
         })
         
-        # Start market data simulation
-        market_task = asyncio.create_task(simulate_market_data(websocket))
+        market_task = asyncio.create_task(send_market_pulses(websocket))
         
-        # Listen for client messages
         while True:
             data = await websocket.receive_text()
             message = json.loads(data)
@@ -160,29 +93,15 @@ async def websocket_live(websocket: WebSocket):
             market_task.cancel()
 
 
-# ============================================================
-# AGENT ACTIVITY FEED WEBSOCKET
-# ============================================================
 @router.websocket("/agents")
 async def websocket_agents(websocket: WebSocket):
-    """
-    Real-time agent activity feed — THE WOW FEATURE.
-    
-    Shows in real-time:
-    - Agent decisions (buy/sell/hold with reasoning)
-    - Agent status changes (active/idle/busy)
-    - Risk manager alerts
-    - Signal generation process
-    - HRM System 2 regime updates
-    """
-    # Authenticate
+    """Real-time agent activity feed — THE WOW FEATURE."""
     token = websocket.query_params.get("token")
     user_info = await authenticate_ws(token) if token else None
     
     await manager.connect(websocket, "agents", user_info)
     
     try:
-        # Send initial connection confirmation
         await manager.send_personal(websocket, {
             "type": "connected",
             "room": "agents",
@@ -191,10 +110,8 @@ async def websocket_agents(websocket: WebSocket):
             "message": "Agent activity feed connected. Watching 7 agents...",
         })
         
-        # Start agent simulation
         agent_task = asyncio.create_task(simulate_agent_activity(websocket))
         
-        # Listen for client messages (heartbeat, filters, etc.)
         while True:
             data = await websocket.receive_text()
             message = json.loads(data)
@@ -205,13 +122,8 @@ async def websocket_agents(websocket: WebSocket):
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
             
-            elif message.get("type") == "filter":
-                # Client can filter by agent, symbol, etc.
-                await manager.send_personal(websocket, {
-                    "type": "filter_applied",
-                    "filters": message.get("filters", {}),
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                })
+            elif message.get("type") == "sync":
+                await send_agent_state_sync(websocket)
     
     except WebSocketDisconnect:
         manager.disconnect(websocket, "agents")
@@ -222,28 +134,54 @@ async def websocket_agents(websocket: WebSocket):
             agent_task.cancel()
 
 
-# ============================================================
-# SIMULATION TASKS (Replace with real data in production)
-# ============================================================
+@router.get("/state")
+async def get_agent_state():
+    """REST endpoint for state reconciliation on WebSocket reconnect."""
+    latest_signal = None
+    async with async_session_factory() as db:
+        from sqlalchemy import select
+        from app.db.models import Signal
+        result = await db.execute(
+            select(Signal).order_by(Signal.created_at.desc()).limit(1)
+        )
+        row = result.scalar_one_or_none()
+        if row:
+            latest_signal = {
+                "id": str(row.id),
+                "symbol": row.symbol,
+                "direction": row.direction,
+                "confidence": float(row.confidence) if row.confidence else 0,
+                "regime": row.regime,
+                "timestamp": row.created_at.isoformat() if row.created_at else None,
+            }
+    
+    return {
+        "agents": AGENT_DEFINITIONS,
+        "regime": {"regime": "SIDEWAYS", "confidence": 72, "lastUpdate": datetime.now(timezone.utc).isoformat()},
+        "latest_signal": latest_signal,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
 
-async def simulate_market_data(websocket: WebSocket):
-    """Simulate real-time market data ticks."""
+
+async def send_agent_state_sync(websocket: WebSocket):
+    """Send current agent state for reconciliation."""
+    state = await get_agent_state()
+    await manager.send_personal(websocket, {
+        "type": "state_sync",
+        **state,
+    })
+
+
+async def send_market_pulses(websocket: WebSocket):
+    """Send market pulses every 30 seconds."""
     import random
     
-    prices = {
-        "BTC": 67500.0,
-        "ETH": 3450.0,
-        "NVDA": 875.30,
-        "AAPL": 198.50,
-        "SPY": 523.40,
-        "GOLD": 2340.0,
-    }
+    prices = {"BTC": 67500, "ETH": 3450, "SPY": 523, "GOLD": 2340, "VIX": 16.5}
     
     try:
         while True:
             for symbol, base_price in prices.items():
-                # Random walk
-                change = random.gauss(0, base_price * 0.001)
+                change = random.gauss(0, base_price * 0.0005)
                 prices[symbol] += change
                 
                 await manager.send_personal(websocket, {
@@ -251,12 +189,12 @@ async def simulate_market_data(websocket: WebSocket):
                     "symbol": symbol,
                     "price": round(prices[symbol], 2),
                     "change": round(change, 2),
-                    "change_pct": round((change / prices[symbol]) * 100, 4),
+                    "changePct": round((change / prices[symbol]) * 100, 4),
                     "volume": random.randint(100, 10000),
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
             
-            await asyncio.sleep(1)  # 1 tick per second
+            await asyncio.sleep(30)
     
     except asyncio.CancelledError:
         pass
@@ -266,104 +204,111 @@ async def simulate_agent_activity(websocket: WebSocket):
     """Simulate real-time agent decisions and activity."""
     import random
     
-    agents = [
-        {"name": "System 2", "role": "Strategic", "emoji": "🧠"},
-        {"name": "Researcher", "role": "Analysis", "emoji": "🕵️"},
-        {"name": "Strategist", "role": "Value", "emoji": "🎯"},
-        {"name": "Quant", "role": "Technical", "emoji": "📊"},
-        {"name": "Fundamentalist", "role": "Financials", "emoji": "🔍"},
-        {"name": "Risk Manager", "role": "Gatekeeper", "emoji": "🛡️"},
-        {"name": "Learner", "role": "Review", "emoji": "🎓"},
-    ]
-    
-    activities = [
-        "Analyzing {symbol} earnings call...",
-        "RSI divergence detected on {symbol}",
-        "Margin of safety: {pct}% — APPROVED",
-        "Sharpe ratio signal: {val} — generating signal",
-        "Position size: {pct}% of portfolio — APPROVED",
-        "Trade executed: {side} {symbol} @ ${price}",
-        "Monitoring VIX spike to {vix}...",
-        "Regime detection: {regime} (confidence: {conf}%)",
-        "Risk budget: {budget}% remaining",
-        "Timeframe alignment: {alignment}",
-    ]
-    
-    symbols = ["NVDA", "AAPL", "MSFT", "GOOGL", "BTC", "ETH", "SPY"]
+    symbols = ["NVDA", "AAPL", "MSFT", "BTC", "ETH"]
     regimes = ["BULL", "BEAR", "SIDEWAYS", "TRANSITION"]
+    votes_list = ["BUY", "SELL", "HOLD"]
+    
+    for agent in AGENT_DEFINITIONS:
+        await manager.send_personal(websocket, {
+            "type": "agent_status",
+            "agent": agent["id"],
+            "role": agent["role"],
+            "emoji": agent["emoji"],
+            "status": random.choice(["idle", "active"]),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        })
+        await asyncio.sleep(0.2)
     
     try:
-        # Send initial agent statuses
-        for agent in agents:
-            await manager.send_personal(websocket, {
-                "type": "agent_status",
-                "agent": agent["name"],
-                "role": agent["role"],
-                "emoji": agent["emoji"],
-                "status": random.choice(["active", "idle", "active", "active"]),
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-            })
-            await asyncio.sleep(0.3)
-        
-        # Continuous activity feed
+        cycle = 0
         while True:
-            agent = random.choice(agents)
-            template = random.choice(activities)
-            symbol = random.choice(symbols)
-            
-            # Fill template
-            activity = template.format(
-                symbol=symbol,
-                pct=random.randint(20, 50),
-                val=round(random.uniform(1.5, 3.0), 2),
-                side=random.choice(["BUY", "SELL"]),
-                price=round(random.uniform(100, 900), 2),
-                vix=round(random.uniform(12, 25), 1),
-                regime=random.choice(regimes),
-                conf=random.randint(60, 95),
-                budget=round(random.uniform(0.5, 4.0), 1),
-                alignment=round(random.uniform(-1, 1), 2),
-            )
-            
-            # Determine activity type
-            if "executed" in activity.lower():
-                activity_type = "trade_executed"
-                priority = "high"
-            elif "approved" in activity.lower():
-                activity_type = "decision_approved"
-                priority = "medium"
-            elif "regime" in activity.lower():
-                activity_type = "regime_update"
-                priority = "high"
-            elif "risk" in activity.lower():
-                activity_type = "risk_alert"
-                priority = "medium"
-            else:
-                activity_type = "analysis"
-                priority = "low"
+            cycle += 1
             
             await manager.send_personal(websocket, {
                 "type": "agent_activity",
-                "agent": agent["name"],
-                "emoji": agent["emoji"],
-                "activity": activity,
-                "activity_type": activity_type,
-                "priority": priority,
-                "symbol": symbol,
+                "activity_type": "analysis_start",
+                "agent": "orchestrator",
+                "emoji": "⚡",
+                "activity": f"Starting analysis cycle #{cycle}",
+                "priority": "high",
+                "symbol": random.choice(symbols),
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             })
             
-            # Variable delay based on priority
-            delay = {"high": 1, "medium": 2, "low": 3}[priority]
-            await asyncio.sleep(delay + random.uniform(0, 2))
+            for i, agent in enumerate(AGENT_DEFINITIONS):
+                await manager.send_personal(websocket, {
+                    "type": "agent_status",
+                    "agent": agent["id"],
+                    "status": "analyzing",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                })
+                await asyncio.sleep(1.5)
+                
+                vote = random.choice(votes_list)
+                conf = random.randint(60, 95)
+                
+                await manager.send_personal(websocket, {
+                    "type": "agent_activity",
+                    "activity_type": "vote_cast",
+                    "agent": agent["id"],
+                    "emoji": agent["emoji"],
+                    "activity": f"Voting {vote} at {conf}% confidence",
+                    "priority": "medium",
+                    "symbol": random.choice(symbols),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                })
+                
+                await manager.send_personal(websocket, {
+                    "type": "agent_vote",
+                    "agent": agent["id"],
+                    "vote": vote,
+                    "confidence": conf,
+                    "reasoning": f"{agent['name']} analysis complete",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                })
+            
+            regime = random.choice(regimes)
+            await manager.send_personal(websocket, {
+                "type": "regime_change",
+                "regime": regime,
+                "confidence": random.randint(55, 95),
+                "message": f"System 2 detected: {regime} regime",
+                "priority": "high",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
+            
+            buy_cnt = random.randint(1, 5)
+            sell_cnt = random.randint(0, 3)
+            hold_cnt = 7 - buy_cnt - sell_cnt
+            decision = "BUY" if buy_cnt > sell_cnt else "SELL" if sell_cnt > buy_cnt else "HOLD"
+            
+            await manager.send_personal(websocket, {
+                "type": "consensus",
+                "finalDecision": decision,
+                "totalBuy": buy_cnt,
+                "totalSell": sell_cnt,
+                "totalHold": hold_cnt,
+                "avgConfidence": random.randint(65, 90),
+                "reasoning": f"Council consensus: {buy_cnt}B/{sell_cnt}S/{hold_cnt}H",
+                "riskApproved": random.random() > 0.1,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
+            
+            await manager.send_personal(websocket, {
+                "type": "agent_activity",
+                "activity_type": "analysis_complete",
+                "agent": "orchestrator",
+                "emoji": "⚡",
+                "activity": f"Analysis complete: {decision}",
+                "priority": "high",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            })
+            
+            await asyncio.sleep(15)
     
     except asyncio.CancelledError:
         pass
 
-
-# ============================================================
-# BROADCAST HELPERS (for use by other modules)
-# ============================================================
 
 async def broadcast_agent_activity(activity: dict):
     """Broadcast agent activity to all connected clients."""
@@ -379,15 +324,6 @@ async def broadcast_trade_notification(trade: dict):
     await manager.broadcast("live", {
         "type": "trade_executed",
         **trade,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-    })
-
-
-async def broadcast_market_update(data: dict):
-    """Broadcast market data update."""
-    await manager.broadcast("live", {
-        "type": "market_update",
-        **data,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     })
 

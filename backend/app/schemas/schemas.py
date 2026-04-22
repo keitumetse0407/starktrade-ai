@@ -12,6 +12,8 @@ class UserRegister(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
     full_name: Optional[str] = None
+    risk_tolerance: int = Field(default=5, ge=1, le=10)
+    strategy: str = Field(default="all_weather")
 
 
 class UserLogin(BaseModel):

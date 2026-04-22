@@ -74,3 +74,4 @@ engine/models/*.pkl
 .env*.local
 *.dat
 *.dir
+frontend/hermes_conversation_20260421_081538.json

@@ -27,6 +27,8 @@ async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
         role="admin" if is_first_user else "free",
         is_active=True,
         is_verified=is_first_user,
+        risk_tolerance=data.risk_tolerance,
+        strategy=data.strategy,
     )
     db.add(user)
     await db.flush()
