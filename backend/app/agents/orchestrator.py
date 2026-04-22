@@ -54,12 +54,21 @@ class AgentState(TypedDict):
     messages: list
 
 
-llm = ChatGroq(
-    model="llama-3.1-8b-instant",
-    api_key=os.getenv("GROQ_API_KEY"),
-    temperature=0.1,
-    max_tokens=800,
-)
+llm = None
+
+def get_llm():
+    """Get Groq LLM instance - uses 70b for best reasoning."""
+    global llm
+    if not llm:
+        api_key = os.getenv("GROQ_API_KEY", "")
+        if api_key:
+            llm = ChatGroq(
+                model="llama-3.1-70b-versatile",
+                api_key=api_key,
+                temperature=0.1,
+                max_tokens=800,
+            )
+    return llm
 
 
 # ============================================================
@@ -150,7 +159,10 @@ Output JSON:
 - regime_alignment: how well does this fit the current {regime} regime?
 """
 
-    response = await llm.ainvoke([
+    groq_llm = get_llm()
+    if not groq_llm:
+        return {"final_decision": {"analysis": "No Groq API key configured"}}
+    response = await groq_llm.ainvoke([
         SystemMessage(content="You are a world-class financial research analyst."),
         HumanMessage(content=prompt),
     ])
@@ -194,7 +206,10 @@ Output JSON:
 - reasoning: detailed explanation
 """
 
-    response = await llm.ainvoke([
+    groq_llm = get_llm()
+    if not groq_llm:
+        return {"final_decision": {"analysis": "No Groq API key configured"}}
+    response = await groq_llm.ainvoke([
         SystemMessage(content="You are a value investing strategist with Munger/Buffett discipline."),
         HumanMessage(content=prompt),
     ])
@@ -244,7 +259,10 @@ Output JSON:
 - regime_model_used: which model was primary
 """
 
-    response = await llm.ainvoke([
+    groq_llm = get_llm()
+    if not groq_llm:
+        return {"final_decision": {"analysis": "No Groq API key configured"}}
+    response = await groq_llm.ainvoke([
         SystemMessage(content="You are a quantitative analyst modeled after Jim Simons."),
         HumanMessage(content=prompt),
     ])
@@ -293,7 +311,10 @@ Output JSON:
 - reasoning: string
 """
 
-    response = await llm.ainvoke([
+    groq_llm = get_llm()
+    if not groq_llm:
+        return {"final_decision": {"analysis": "No Groq API key configured"}}
+    response = await groq_llm.ainvoke([
         SystemMessage(content="You are a forensic financial analyst."),
         HumanMessage(content=prompt),
     ])
@@ -362,7 +383,10 @@ Output JSON:
 - regime_risk_note: specific risk for this regime
 """
 
-    response = await llm.ainvoke([
+    groq_llm = get_llm()
+    if not groq_llm:
+        return {"final_decision": {"analysis": "No Groq API key configured"}}
+    response = await groq_llm.ainvoke([
         SystemMessage(content="You are the ultimate risk manager. You protect capital above all else. You have System 2 authority to override any agent."),
         HumanMessage(content=prompt),
     ])
@@ -406,7 +430,10 @@ Output JSON:
 - regime_context: how the {regime} regime influenced this decision
 """
 
-    response = await llm.ainvoke([
+    groq_llm = get_llm()
+    if not groq_llm:
+        return {"final_decision": {"analysis": "No Groq API key configured"}}
+    response = await groq_llm.ainvoke([
         SystemMessage(content="You synthesize multi-agent analysis into actionable trading decisions."),
         HumanMessage(content=prompt),
     ])

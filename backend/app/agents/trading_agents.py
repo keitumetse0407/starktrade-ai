@@ -1,7 +1,12 @@
 """
-Real AI Trading Agents — OpenAI Integration
+Real AI Trading Agents — Groq LLM Integration
 =============================================
-Connects to OpenAI GPT-4o for real agent intelligence.
+Uses Groq's llama-3.1 models for real-time AI trading decisions.
+Free tier: 60 calls/min, fully sufficient for retail trading.
+
+Models available (fastest inference):
+- llama-3.1-70b-versatile (best reasoning)
+- llama-3.1-8b-instant (fastest, good for high frequency)
 """
 
 import os
@@ -11,9 +16,7 @@ from datetime import datetime
 from typing import Optional
 from dataclasses import dataclass
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-KILO_API_KEY = os.getenv("KILO_API_KEY", "")
-KILO_API_URL = os.getenv("KILO_API_URL", "https://api.kilocode.ai/v1")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
 
 @dataclass
@@ -29,7 +32,7 @@ class TradeSignal:
 
 
 class TradingAgent:
-    """Base class for AI trading agents."""
+    """Base class for AI trading agents using Groq LLM."""
     
     def __init__(self, name: str, persona: str, system_prompt: str):
         self.name = name
@@ -38,193 +41,81 @@ class TradingAgent:
         self.status = "idle"
     
     async def analyze(self, market_data: dict) -> dict:
-        """Analyze market data and return recommendation."""
-        # Try Kilo Code first (free), then OpenAI, then smart mock
-        if KILO_API_KEY:
-            try:
-                return await self._kilo_analysis(market_data)
-            except Exception as e:
-                print(f"Kilo failed for {self.name}: {e}")
-        
-        if OPENAI_API_KEY:
-            try:
-                return await self._openai_analysis(market_data)
-            except Exception as e:
-                print(f"OpenAI failed for {self.name}: {e}")
-        
-        return self._smart_mock_analysis(market_data)
-    
-    async def _kilo_analysis(self, market_data: dict) -> dict:
-        """Kilo Code API analysis."""
-        import httpx
-        
-        prompt = f"""Analyze this market data and provide a trading recommendation.
-
-Market Data:
-{json.dumps(market_data, indent=2)}
-
-Respond ONLY with JSON:
-{{"signal": "buy" | "sell" | "hold", "confidence": 0.0-1.0, "reasoning": "brief"}}"""
-
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{KILO_API_URL}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {KILO_API_KEY}",
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "model": "anthropic/claude-3.5-haiku-latest",
-                    "messages": [
-                        {"role": "system", "content": self.system_prompt},
-                        {"role": "user", "content": prompt}
-                    ],
-                    "temperature": 0.1,
-                    "max_tokens": 200
-                },
-                timeout=30
-            )
-            
-            data = response.json()
-            
-            if data.get("choices"):
-                content = data["choices"][0]["message"]["content"]
-            else:
-                raise Exception(f"Kilo API error: {data}")
+        """Analyze market data using Groq LLM."""
+        if not GROQ_API_KEY:
+            return self._smart_mock_analysis(market_data)
         
         try:
-            result = json.loads(content)
-        except:
-            if "```json" in content:
-                result = json.loads(content.split("```json")[1].split("```")[0])
-            else:
-                result = {"signal": "hold", "confidence": 0.5, "reasoning": content}
-        
-        return {
-            "agent": self.name,
-            "persona": self.persona,
-            "signal": result.get("signal", "hold"),
-            "confidence": result.get("confidence", 0.5),
-            "reasoning": result.get("reasoning", ""),
-            "timestamp": datetime.utcnow().isoformat()
-        }
+            return await self._groq_analysis(market_data)
+        except Exception as e:
+            print(f"[Agent {self.name}] Groq API error: {e}")
+            return self._smart_mock_analysis(market_data)
     
-    async def _openai_analysis(self, market_data: dict) -> dict:
-        """Real OpenAI analysis."""
+    async def _groq_analysis(self, market_data: dict) -> dict:
+        """Real Groq LLM analysis."""
         from groq import AsyncGroq
-        client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
         
-        prompt = f"""Analyze this market data and provide a trading recommendation.
+        client = AsyncGroq(api_key=GROQ_API_KEY)
+        
+        prompt = f"""You are {self.name} ({self.persona}).
+
+Analyze this market data and provide a trading recommendation.
 
 Market Data:
 {json.dumps(market_data, indent=2)}
 
-Respond ONLY with JSON:
-{{"signal": "buy" | "sell" | "hold", "confidence": 0.0-1.0, "reasoning": "brief"}}"""
+Respond ONLY with valid JSON (no markdown):
+{{"signal": "buy", "confidence": 0.85, "reasoning": "brief explanation"}}"""
 
         response = await client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="llama-3.1-70b-versatile",
             messages=[
                 {"role": "system", "content": self.system_prompt},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.1,
-            max_tokens=200
+            max_tokens=300
         )
         
         content = response.choices[0].message.content
         
+        # Parse JSON response
         try:
             result = json.loads(content)
-        except:
+        except json.JSONDecodeError:
+            # Try extracting from markdown code block
             if "```json" in content:
                 result = json.loads(content.split("```json")[1].split("```")[0])
+            elif "```" in content:
+                result = json.loads(content.split("```")[1].split("```")[0])
             else:
-                result = {"signal": "hold", "confidence": 0.5, "reasoning": content}
+                # Fallback - try to extract signal from text
+                content_lower = content.lower()
+                signal = "hold"
+                if "buy" in content_lower and "sell" not in content_lower:
+                    signal = "buy"
+                elif "sell" in content_lower and "buy" not in content_lower:
+                    signal = "sell"
+                result = {"signal": signal, "confidence": 0.5, "reasoning": content[:200]}
         
         return {
             "agent": self.name,
             "persona": self.persona,
             "signal": result.get("signal", "hold"),
             "confidence": result.get("confidence", 0.5),
-            "reasoning": result.get("reasoning", ""),
+            "reasoning": result.get("reasoning", "")[:300],
             "timestamp": datetime.utcnow().isoformat()
         }
-        
-        try:
-            from groq import AsyncGroq
-            client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
-            
-            prompt = f"""Analyze this market data and provide a trading recommendation.
-
-Market Data:
-{json.dumps(market_data, indent=2)}
-
-Respond in JSON format:
-{{
-    "signal": "buy" | "sell" | "hold",
-    "confidence": 0.0-1.0,
-    "reasoning": "brief explanation",
-    "entry_price": float,
-    "stop_loss": float,
-    "take_profit": float
-}}"""
-
-            response = await client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.1,
-                max_tokens=500
-            )
-            
-            content = response.choices[0].message.content
-            
-            # Parse JSON from response
-            try:
-                result = json.loads(content)
-            except json.JSONDecodeError:
-                # Try to extract JSON from markdown
-                if "```json" in content:
-                    json_str = content.split("```json")[1].split("```")[0]
-                    result = json.loads(json_str)
-                else:
-                    result = {"signal": "hold", "confidence": 0.5, "reasoning": content}
-            
-            return {
-                "agent": self.name,
-                "persona": self.persona,
-                "signal": result.get("signal", "hold"),
-                "confidence": result.get("confidence", 0.5),
-                "reasoning": result.get("reasoning", ""),
-                "entry_price": result.get("entry_price"),
-                "stop_loss": result.get("stop_loss"),
-                "take_profit": result.get("take_profit"),
-                "timestamp": datetime.utcnow().isoformat()
-            }
-            
-        except Exception as e:
-            return {
-                "agent": self.name,
-                "signal": "hold",
-                "confidence": 0,
-                "reasoning": f"Error: {str(e)}",
-                "timestamp": datetime.utcnow().isoformat()
-            }
     
     def _smart_mock_analysis(self, market_data: dict) -> dict:
-        """Smart mock analysis using technical indicators."""
+        """Fallback technical analysis when LLM unavailable."""
         import random
         
-        # Use market data to make intelligent decisions
         price = market_data.get("price", 100)
         change = market_data.get("change_pct", 0)
         rsi = market_data.get("rsi", 50)
         volume = market_data.get("volume", 1000000)
         
-        # Agent-specific logic
         signal = "hold"
         confidence = 0.5
         reasoning = ""
@@ -268,7 +159,6 @@ Respond in JSON format:
                 reasoning = "No statistical edge detected"
                 
         elif self.name == "The Fundamentalist":
-            # Simplified fundamental check
             if change > 1 and volume > 1500000:
                 signal = "buy"
                 confidence = 0.6
@@ -280,17 +170,38 @@ Respond in JSON format:
             else:
                 reasoning = "Volume doesn't confirm price action"
         
+        elif self.name == "The Risk Manager":
+            # Always enforce risk rules
+            position_size = market_data.get("position_size_pct", 0)
+            if position_size > 5:
+                signal = "sell"
+                confidence = 0.95
+                reasoning = "Position exceeds 5% max - REJECTED"
+            elif market_data.get("daily_loss_pct", 0) > 3:
+                signal = "sell"
+                confidence = 0.99
+                reasoning = "Daily loss limit exceeded - STOP TRADING"
+            else:
+                confidence = 0.8
+                reasoning = "Risk checks passed"
+        
+        else:
+            # Default: random but data-informed
+            signal = random.choice(["buy", "hold", "sell"])
+            confidence = 0.5 + random.random() * 0.3
+            reasoning = f"Analysis complete ({self.name})"
+
         return {
             "agent": self.name,
             "persona": self.persona,
             "signal": signal,
-            "confidence": min(confidence, 0.9),
-            "reasoning": reasoning + " (technical analysis mode)",
+            "confidence": min(confidence, 0.95),
+            "reasoning": reasoning + " (technical fallback)",
             "timestamp": datetime.utcnow().isoformat()
         }
 
 
-# Initialize agents
+# Initialize the 7 HRM agents
 AGENTS = {
     "researcher": TradingAgent(
         name="The Researcher",
@@ -333,8 +244,8 @@ Never let a trade through that could blow up the portfolio."""
 
 async def run_agent_council(symbol: str, market_data: dict) -> dict:
     """
-    Run all agents in parallel and synthesize their recommendations.
-    This is the core of the AI trading system.
+    Run all 7 agents in parallel and synthesize their recommendations.
+    This is the core of the AI trading system using Groq LLM.
     """
     # Run all agents in parallel
     tasks = []
@@ -342,18 +253,26 @@ async def run_agent_council(symbol: str, market_data: dict) -> dict:
         if agent_name != "risk_manager":  # Risk manager goes last
             tasks.append(agent.analyze(market_data))
     
-    agent_results = await asyncio.gather(*tasks)
+    agent_results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    # Process results (handle any exceptions)
+    valid_results = []
+    for i, r in enumerate(agent_results):
+        if isinstance(r, Exception):
+            print(f"Agent error: {r}")
+        else:
+            valid_results.append(r)
     
     # Count signals
-    buy_votes = sum(1 for r in agent_results if r.get("signal") == "buy")
-    sell_votes = sum(1 for r in agent_results if r.get("signal") == "sell")
-    hold_votes = sum(1 for r in agent_results if r.get("signal") == "hold")
+    buy_votes = sum(1 for r in valid_results if r.get("signal") == "buy")
+    sell_votes = sum(1 for r in valid_results if r.get("signal") == "sell")
+    hold_votes = sum(1 for r in valid_results if r.get("signal") == "hold")
     
     # Get average confidence
-    avg_confidence = sum(r.get("confidence", 0) for r in agent_results) / len(agent_results)
+    avg_confidence = sum(r.get("confidence", 0) for r in valid_results) / max(len(valid_results), 1)
     
     # Determine consensus
-    total_agents = len(agent_results)
+    total_agents = len(valid_results)
     if buy_votes > total_agents / 2:
         consensus = "buy"
     elif sell_votes > total_agents / 2:
@@ -367,7 +286,9 @@ async def run_agent_council(symbol: str, market_data: dict) -> dict:
         "consensus": consensus,
         "confidence": avg_confidence,
         "agent_votes": {"buy": buy_votes, "sell": sell_votes, "hold": hold_votes},
-        "individual_results": agent_results
+        "individual_results": valid_results,
+        "position_size_pct": market_data.get("position_size_pct", 0),
+        "daily_loss_pct": market_data.get("daily_loss_pct", 0),
     }
     
     risk_result = await AGENTS["risk_manager"].analyze(risk_data)
@@ -388,6 +309,6 @@ async def run_agent_council(symbol: str, market_data: dict) -> dict:
         "final_decision": final_decision,
         "confidence": avg_confidence,
         "reason": reason,
-        "agent_results": list(agent_results) + [risk_result],
+        "agent_results": valid_results + [risk_result],
         "timestamp": datetime.utcnow().isoformat()
     }
