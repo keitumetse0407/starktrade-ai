@@ -108,7 +108,7 @@ export default function DashboardPage() {
       if (token) {
         try {
           // Fetch portfolio
-          const portfolioRes = await api.get('/portfolio/', token);
+          const portfolioRes = await api('/portfolio/', { method: 'GET', headers: { Authorization: `Bearer ${token}` } });
           if (portfolioRes.ok) {
             const portfolios = await portfolioRes.json();
             if (portfolios.length > 0) {
@@ -120,7 +120,7 @@ export default function DashboardPage() {
           }
 
           // Fetch recent trades
-          const tradesRes = await api.get('/trades/?limit=10', token);
+          const tradesRes = await api('/trades/?limit=10', { method: 'GET', headers: { Authorization: `Bearer ${token}` } });
           if (tradesRes.ok) {
             const tradeData = await tradesRes.json();
             if (Array.isArray(tradeData)) {
@@ -135,8 +135,8 @@ export default function DashboardPage() {
             }
           }
 
-          // Fetch signals
-          const signalsRes = await api.get('/signals', token);
+// Fetch signals
+          const signalsRes = await api('/signals', { method: 'GET', headers: { Authorization: `Bearer ${token}` } });
           if (signalsRes.ok) {
             const signalData = await signalsRes.json();
             if (Array.isArray(signalData)) {

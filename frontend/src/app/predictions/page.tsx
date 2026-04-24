@@ -46,7 +46,7 @@ export default function PredictionsPage() {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
       // Fetch markets
-      const marketsRes = await api.get('/predictions/markets?status=open&limit=20');
+      const marketsRes = await api('/predictions/markets?status=open&limit=20', { method: 'GET' });
       if (marketsRes.ok) {
         const data = await marketsRes.json();
         setMarkets(data.markets || data);
@@ -55,7 +55,7 @@ export default function PredictionsPage() {
       // Fetch user if logged in
       if (token) {
         try {
-          const userRes = await api.get('/auth/me', token);
+          const userRes = await api('/auth/me', { method: 'GET', headers: { Authorization: `Bearer ${token}` } });
           if (userRes.ok) {
             const userData = await userRes.json();
             setUser(userData);
@@ -96,11 +96,15 @@ export default function PredictionsPage() {
     }
 
     try {
-      const res = await api.post('/predictions/trade', {
-        market_id: marketId,
-        side: vote,
-        quantity: 100,
-      }, token);
+      const res = await api('/predictions/trade', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          market_id: marketId,
+          side: vote,
+          quantity: 100,
+        }),
+      });
 
       if (res.ok) {
         alert(`Vote placed! You voted ${vote.toUpperCase()}`);
