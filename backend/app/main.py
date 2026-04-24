@@ -34,6 +34,7 @@ if os.getenv("SENTRY_DSN"):
     )
 
 from app.api.v1 import auth, portfolio, trades, agents, predictions, ws, market_data, admin, signals, autotrading, billing
+from app.api.v1.trading import router as trading_router
 from app.payfast_routes import router as payfast_router
 
 
@@ -103,4 +104,5 @@ app.include_router(autotrading.router, prefix="/api/v1/autotrading", tags=["Auto
 app.include_router(billing.router, prefix="/api/v1/billing", tags=["Billing"])
 
 # PayFast payment routes
+app.include_router(trading_router)
 app.include_router(payfast_router)
