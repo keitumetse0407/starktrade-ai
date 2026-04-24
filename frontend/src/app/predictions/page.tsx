@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { apiFetch as api } from '@/lib/api';
 
 interface PredictionMarket {
   id: string;

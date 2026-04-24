@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import AgentLiveView from '@/components/AgentLiveView';
 import Link from 'next/link';
-import { api, getPortfolios, getTrades, getSignals } from '@/lib/api';
+import { apiFetch as api, getPortfolios, getTrades, getSignals } from '@/lib/api';
 
 const TABS = [
   { id: 'command', label: 'COMMAND CENTER', icon: '◉' },
