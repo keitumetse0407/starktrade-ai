@@ -4,5 +4,11 @@
   "outputDirectory": "frontend/.next",
   "installCommand": "cd frontend && npm install",
   "framework": "nextjs",
-  "rewrites": []
+  "rewrites": [],
+  "experimentalServices": {
+    "backend": {
+      "entrypoint": "backend",
+      "routePrefix": "/"
+    }
+  }
 }

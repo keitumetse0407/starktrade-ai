@@ -230,6 +230,24 @@ async def generate_signal(
     return _signal_to_dict(db_signal)
 
 
+@router.get("/", response_model=List[SignalHistoryItem])
+async def get_signals(
+    limit: int = Query(default=20, le=100),
+    symbol: Optional[str] = Query(default=None),
+    status: Optional[str] = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get signals - optionally filtered by symbol and status."""
+    stmt = select(Signal).order_by(Signal.generated_at.desc()).limit(limit)
+    if symbol:
+        stmt = stmt.where(Signal.symbol == symbol)
+    if status:
+        stmt = stmt.where(Signal.status == status)
+    result = await db.execute(stmt)
+    signals = result.scalars().all()
+    return [_signal_to_dict(s) for s in signals]
+
+
 @router.get("/latest", response_model=SignalResponse)
 async def get_latest_signal(
     symbol: str = Query(default="XAUUSD"),
