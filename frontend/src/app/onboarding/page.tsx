@@ -127,12 +127,14 @@ export default function OnboardingPage() {
           email,
           password,
           full_name: fullName || undefined,
+          risk_tolerance: Math.round(answers.reduce((a, b) => a + b, 0) / answers.length) * 2.5 + 1,
+          strategy: getStrategy(),
         }),
       });
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.detail || 'Registration failed');
+        setError(data.detail || 'Could not create account. Please try a different email or check your connection.');
         setLoading(false);
         return;
       }
@@ -148,7 +150,7 @@ export default function OnboardingPage() {
 
       setStep(0);
     } catch (err) {
-      setError('Connection error. Make sure the backend is running.');
+      setError('Trading system is starting up. Please wait 30 seconds and try again, or check your internet connection.');
     }
     setLoading(false);
   };
@@ -176,7 +178,7 @@ export default function OnboardingPage() {
       // GO STRAIGHT TO DASHBOARD — NO QUIZ FOR RETURNING USERS
       router.push('/dashboard');
     } catch (err) {
-      setError('Connection error. Make sure the backend is running.');
+      setError('Trading system is starting up. Please wait 30 seconds and try again, or check your internet connection.');
     }
     setLoading(false);
   };

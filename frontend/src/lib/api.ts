@@ -5,6 +5,23 @@ function getToken(): string | null {
   return localStorage.getItem('token');
 }
 
+// Exponential backoff retry
+async function fetchWithRetry(url: string, options: RequestInit, retries = 3, delay = 1000): Promise<Response> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(url, { ...options, signal: AbortSignal.timeout(10000) });
+      if (res.ok || res.status !== 503) return res;
+    } catch (e) {
+      // Network error - continue to retry
+    }
+    if (i < retries - 1) {
+      await new Promise(r => setTimeout(r, delay * Math.pow(2, i))); // 1s, 2s, 4s
+    }
+  }
+  // Last attempt
+  return fetch(url, options);
+}
+
 export async function apiFetch(path: string, options?: RequestInit): Promise<Response> {
   const token = getToken();
   const headers: Record<string, string> = {
@@ -15,7 +32,16 @@ export async function apiFetch(path: string, options?: RequestInit): Promise<Res
 
   const url = path.startsWith('http') ? path : `${API_BASE}/api/v1${path}`;
 
-  const res = await fetch(url, { ...options, headers });
+  const res = await fetchWithRetry(url, { ...options, headers });
+
+  if (res.status === 503) {
+    // Service unavailable - try direct fallback
+    const fallbackUrl = `${API_BASE.replace('starktrade-ai.duckdns.org', 'starktrade-ai.duckdns.org:8000')}${path}`;
+    const fallbackRes = await fetchWithRetry(fallbackUrl, { ...options, headers });
+    if (fallbackRes.ok) return fallbackRes;
+    
+    throw new Error('Trading system temporarily unavailable. Please try again in a few moments.');
+  }
 
   if (res.status === 401) {
     if (typeof window !== 'undefined') {
@@ -56,19 +82,24 @@ export async function getAgents() {
 }
 
 export async function getMarketPulse() {
-  const res = await fetch(`${API_BASE}/api/v1/market/pulse`);
-  if (!res.ok) return {};
-  return res.json();
-}
-
-export async function getPortfolio() {
-  const res = await apiFetch('/portfolio/');
-  if (!res.ok) return [];
-  return res.json();
+  // Direct fetch without auth for market data
+  try {
+    const res = await fetch(`${API_BASE}/api/v1/market/pulse`);
+    if (res.ok) return res.json();
+  } catch (e) {
+    console.warn('Market pulse unavailable:', e);
+  }
+  return {};
 }
 
 export async function getTrades() {
   const res = await apiFetch('/trades/');
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function getPortfolios() {
+  const res = await apiFetch('/portfolio/');
   if (!res.ok) return [];
   return res.json();
 }
@@ -79,4 +110,14 @@ export async function getSignals() {
   return res.json();
 }
 
-export { getToken as getAuthToken2 };
+export async function getPredictions() {
+  const res = await apiFetch('/predictions/markets');
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function getAgentDecisions(agentId: string) {
+  const res = await apiFetch(`/agents/${agentId}/decisions`);
+  if (!res.ok) return [];
+  return res.json();
+}
