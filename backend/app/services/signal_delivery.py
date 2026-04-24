@@ -1,280 +1,128 @@
-"""
-Signal Delivery Service — Telegram + Database Persistence
-==================================================
-Saves finalized signals to PostgreSQL and sends to Telegram channel.
-Includes Celery Beat tasks for cleanup.
-
-Security: This service is internal-only (not exposed as API endpoint).
-Triggered only from within the Orchestrator execution flow.
-"""
-
+"""Signal Delivery Service - Telegram + Database"""
 import os
-import json
-from datetime import datetime, timezone, timedelta
-from decimal import Decimal
+import asyncio
+import aiohttp
+from datetime import datetime
 from typing import Optional
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.session import async_session_factory
-from app.db.models import Signal, SignalPerformance
-from app.api.v1.ws import manager
+from sqlalchemy import text
 
-TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-RETENTION_DAYS = 30
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
-
-async def deliver_signal(
-    symbol: str,
-    direction: str,
-    entry_price: Optional[float],
-    stop_loss: Optional[float],
-    take_profit_1: Optional[float],
-    take_profit_2: Optional[float],
-    position_size_pct: Optional[float],
-    risk_amount: Optional[float],
-    rrr: Optional[float],
-    confidence: float,
-    consensus_score: str,
-    regime: str,
-    trend_direction: str,
-    agent_votes: dict,
-    rationale: str,
-    invalidation: Optional[str],
-    internal_trigger: bool = False,
-) -> dict:
-    """
-    Save signal to database and broadcast via Telegram.
+class SignalDelivery:
+    """Handles signal delivery to Telegram and database persistence"""
     
-    INTERNAL ONLY - Must be called with internal_trigger=True
-    from the Orchestrator. Public API endpoints are disabled
-    for security.
-    """
-    if not internal_trigger:
-        raise PermissionError("Signal delivery must be triggered internally")
+    def __init__(self, db: AsyncSession):
+        self.db = db
     
-    timestamp = datetime.now(timezone.utc)
-    
-    message_text = format_telegram_message(
-        symbol, direction, confidence, regime, rationale
-    )
-    
-    telegram_message_id = None
-    if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
-        telegram_message_id = await send_telegram_message(message_text)
-    
-    async with async_session_factory() as db:
-        signal = Signal(
-            symbol=symbol,
-            direction=direction,
-            entry_price=entry_price,
-            stop_loss=stop_loss,
-            take_profit_1=take_profit_1,
-            take_profit_2=take_profit_2,
-            position_size_pct=position_size_pct,
-            risk_amount=risk_amount,
-            rrr=rrr,
-            confidence=confidence,
-            consensus_score=consensus_score,
-            regime=regime,
-            trend_direction=trend_direction,
-            agent_votes=agent_votes,
-            rationale=rationale,
-            invalidation=invalidation,
-            message_text=message_text,
-            status="sent",
-            delivered_via="telegram" if telegram_message_id else None,
-            telegram_message_id=str(telegram_message_id) if telegram_message_id else None,
-            sent_at=timestamp,
-        )
-        db.add(signal)
-        await db.commit()
-        await db.refresh(signal)
+    async def send_telegram_signal(self, signal_data: dict) -> bool:
+        """Send signal to Telegram channel"""
+        if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+            print("[SignalDelivery] Telegram not configured, skipping...")
+            return False
         
-        signal_id = signal.id
+        message = self._format_telegram_message(signal_data)
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
         
-        await db.execute(
-            SignalPerformance.__table__.insert().values(
-                total_signals=1,
-                buy_signals=1 if direction == "BUY" else 0,
-                sell_signals=1 if direction == "SELL" else 0,
-                watch_signals=1 if direction == "WATCH" else 0,
-                no_trade_signals=1 if direction == "NO_TRADE" else 0,
-                period_start=timestamp,
-                period_end=timestamp + timedelta(days=1),
-            )
-        )
-        await db.commit()
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload) as resp:
+                    if resp.status == 200:
+                        print(f"[SignalDelivery] Signal sent to Telegram: {signal_data.get('symbol')}")
+                        return True
+                    else:
+                        print(f"[SignalDelivery] Telegram error: {resp.status}")
+                        return False
+        except Exception as e:
+            print(f"[SignalDelivery] Error: {e}")
+            return False
     
-    await manager.broadcast("agents", {
-        "type": "signal_generated",
-        "signal": {
-            "id": str(signal_id),
-            "symbol": symbol,
-            "direction": direction,
-            "confidence": confidence,
-            "regime": regime,
-            "timestamp": timestamp.isoformat(),
-        }
-    })
-    
-    return {"signal_id": str(signal_id), "telegram_sent": bool(telegram_message_id)}
+    def _format_telegram_message(self, signal: dict) -> str:
+        """Format signal as Telegram message"""
+        emoji = "🟢" if signal.get("action") == "BUY" else "🔴"
+        return f"""🤖 <b>STARKTRADE SIGNAL</b>
 
+📊 {signal.get('symbol', 'N/A')} | {signal.get('action', 'N/A')}
+💡 Confidence: {signal.get('confidence', 'N/A')}%
+🎯 Entry: {signal.get('entry_price', 'N/A')}
+🛡️ Stop Loss: {signal.get('stop_loss', 'N/A')}
+🎯 Take Profit: {signal.get('take_profit', 'N/A')}
+📈 Regime: {signal.get('regime', 'N/A')}
 
-async def send_telegram_message(text: str) -> Optional[int]:
-    """Send message via Telegram Bot API."""
-    import httpx
+📝 {signal.get('reasoning', 'Analysis complete')}
+
+⚠️ <i>Not financial advice. Trade at your own risk.</i>"""
     
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        return None
-    
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(url, json={
-                "chat_id": TELEGRAM_CHAT_ID,
-                "text": text,
-                "parse_mode": "Markdown",
-                "disable_web_page_preview": True,
+    async def save_signal_to_db(self, signal_data: dict) -> bool:
+        """Save signal to PostgreSQL signals table"""
+        try:
+            query = text("""
+                INSERT INTO signals (symbol, action, entry_price, stop_loss, take_profit, confidence, regime, reasoning, created_at)
+                VALUES (:symbol, :action, :entry_price, :stop_loss, :take_profit, :confidence, :regime, :reasoning, :created_at)
+            """)
+            await self.db.execute(query, {
+                "symbol": signal_data.get("symbol"),
+                "action": signal_data.get("action"),
+                "entry_price": signal_data.get("entry_price"),
+                "stop_loss": signal_data.get("stop_loss"),
+                "take_profit": signal_data.get("take_profit"),
+                "confidence": signal_data.get("confidence"),
+                "regime": signal_data.get("regime"),
+                "reasoning": signal_data.get("reasoning"),
+                "created_at": datetime.utcnow()
             })
-            if r.status_code == 200:
-                data = r.json()
-                return data.get("result", {}).get("message_id")
-    except Exception as e:
-        print(f"[SignalDelivery] Telegram error: {e}")
+            await self.db.commit()
+            print(f"[SignalDelivery] Signal saved to DB: {signal_data.get('symbol')}")
+            return True
+        except Exception as e:
+            print(f"[SignalDelivery] DB save error: {e}")
+            await self.db.rollback()
+            return False
     
-    return None
-
-
-def format_telegram_message(
-    symbol: str,
-    direction: str,
-    confidence: float,
-    regime: str,
-    rationale: str,
-) -> str:
-    """Format signal for Telegram with emoji indicators."""
-    
-    direction_emoji = {
-        "BUY": "🟢",
-        "SELL": "🔴",
-        "WATCH": "👀",
-        "NO_TRADE": "⏸️",
-    }.get(direction, "⚪")
-    
-    confidence_bar = "█" * int(confidence / 10) + "░" * (10 - int(confidence / 10))
-    
-    truncated_rationale = rationale[:200] + "..." if len(rationale) > 200 else rationale
-    
-    message = f"""
-🤖 *STARKTRADE SIGNAL*
-
-📊 {symbol} | {direction_emoji} *{direction}*
-
-💡 Confidence: {confidence:.0f}%
-{confidence_bar}
-
-🌊 Regime: {regime.upper()}
-
-📝 Reasoning:
-_{truncated_rationale}_
-
-⚠️ *Not financial advice. Past performance ≠ future results.*
-"""
-    
-    return message.strip()
-
-
-async def purge_old_signals(days: int = RETENTION_DAYS) -> int:
-    """Celery task: Archive/purge signals older than retention period."""
-    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
-    
-    async with async_session_factory() as db:
-        result = await db.execute(
-            select(Signal).where(
-                Signal.created_at < cutoff,
-                Signal.status.in_(["generated", "sent", "active"])
-            )
-        )
-        signals = result.scalars().all()
-        
-        count = len(signals)
-        
-        for signal in signals:
-            signal.status = "archived"
-        
-        await db.commit()
-        
-        print(f"[SignalDelivery] Archived {count} old signals")
-        
-        return count
-
-
-from celery import shared_task
-
-@shared_task(bind=True, name="signal_delivery.purge_old_signals")
-def purge_old_signals_task(self, days: int = 30) -> int:
-    """Celery Beat task: Archive/purge signals older than retention period."""
-    import asyncio
-    loop = asyncio.new_event_loop()
-    try:
-        asyncio.set_event_loop(loop)
-        return loop.run_until_complete(purge_old_signals(days))
-    finally:
-        loop.close()
-
-@shared_task(bind=True, name="signal_delivery.cleanup_cache")
-def cleanup_redis_cache_task(self) -> int:
-    """Celery Beat task: Clean up expired Redis cache."""
-    from app.services.celery_app import redis_client
-    
-    if not redis_client:
-        return 0
-    
-    count = 0
-    try:
-        for key in redis_client.scan_iter(match="*signal:*", count=1000):
-            ttl = redis_client.ttl(key)
-            if ttl <= 0:
-                redis_client.delete(key)
-                count += 1
-    except Exception as e:
-        print(f"[SignalDelivery] Redis cleanup error: {e}")
-    
-    print(f"[SignalDelivery] Cleaned {count} expired Redis keys")
-    return count
-
-
-async def get_signal_performance(days: int = 30) -> dict:
-    """Get signal performance stats for backtesting."""
-    start = datetime.now(timezone.utc) - timedelta(days=days)
-    
-    async with async_session_factory() as db:
-        result = await db.execute(
-            select(Signal).where(
-                Signal.created_at >= start,
-                Signal.status.in_(["closed_win", "closed_loss"])
-            )
-        )
-        signals = result.scalars().all()
-        
-        if not signals:
-            return {
-                "total": 0,
-                "win_rate": 0,
-                "avg_win_pct": 0,
-                "avg_loss_pct": 0,
-            }
-        
-        wins = [s for s in signals if s.outcome_pnl_pct and s.outcome_pnl_pct > 0]
-        losses = [s for s in signals if s.outcome_pnl_pct and s.outcome_pnl_pct <= 0]
+    async def deliver_signal(self, signal_data: dict) -> dict:
+        """Full delivery: Telegram + DB"""
+        telegram_sent = await self.send_telegram_signal(signal_data)
+        db_saved = await self.save_signal_to_db(signal_data)
         
         return {
-            "total": len(signals),
-            "wins": len(wins),
-            "losses": len(losses),
-            "win_rate": (len(wins) / len(signals)) * 100 if signals else 0,
-            "avg_win_pct": sum(s.outcome_pnl_pct for s in wins) / len(wins) if wins else 0,
-            "avg_loss_pct": abs(sum(s.outcome_pnl_pct for s in losses) / len(losses)) if losses else 0,
+            "telegram": telegram_sent,
+            "database": db_saved,
+            "symbol": signal_data.get("symbol"),
+            "action": signal_data.get("action")
         }
+
+
+class MarketPulse:
+    """Broadcast market data to WebSocket clients"""
+    
+    def __init__(self, ws_manager):
+        self.ws_manager = ws_manager
+    
+    async def broadcast_market_data(self, market_data: dict):
+        """Broadcast market pulse to all WS clients"""
+        message = {
+            "type": "market_pulse",
+            "timestamp": datetime.utcnow().isoformat(),
+            "data": market_data
+        }
+        await self.ws_manager.broadcast(message)
+    
+    async def broadcast_signal(self, signal_data: dict):
+        """Broadcast new signal to all WS clients"""
+        message = {
+            "type": "new_signal",
+            "timestamp": datetime.utcnow().isoformat(),
+            "data": signal_data
+        }
+        await self.ws_manager.broadcast(message)
+    
+    async def broadcast_trade(self, trade_data: dict):
+        """Broadcast trade execution to all WS clients"""
+        message = {
+            "type": "trade_execution",
+            "timestamp": datetime.utcnow().isoformat(),
+            "data": trade_data
+        }
+        await self.ws_manager.broadcast(message)
