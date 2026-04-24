@@ -134,7 +134,10 @@ export default function OnboardingPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.detail || 'Could not create account. Please try a different email or check your connection.');
+        const errorMsg = Array.isArray(data.detail)
+          ? data.detail.map((e: { msg?: string }) => e.msg || 'Validation error').join(', ')
+          : (data.detail || 'Could not create account. Please try a different email or check your connection.');
+        setError(errorMsg);
         setLoading(false);
         return;
       }
@@ -167,7 +170,10 @@ export default function OnboardingPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.detail || 'Login failed');
+        const errorMsg = Array.isArray(data.detail)
+          ? data.detail.map((e: { msg?: string }) => e.msg || 'Validation error').join(', ')
+          : (data.detail || 'Login failed');
+        setError(errorMsg);
         setLoading(false);
         return;
       }

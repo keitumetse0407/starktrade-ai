@@ -18,7 +18,9 @@ from jose import JWTError, jwt
 from app.core.config import settings
 from app.db.session import async_session_factory
 from app.db.models import User, Signal
-from app.api.v1.ws import manager
+from app.services.ws_manager import ConnectionManager
+
+manager = ConnectionManager()
 
 router = APIRouter()
 
