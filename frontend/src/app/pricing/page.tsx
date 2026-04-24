@@ -80,7 +80,9 @@ export default function PricingPage() {
 
       const data: PaymentResponse = await response.json();
 
-      if (data.success && data.payment_url) {
+      if (!response.ok) {
+        setError(data.error || 'Payment creation failed');
+      } else if (data.success && data.payment_url) {
         // Redirect to PayFast
         window.location.href = data.payment_url;
       } else {
