@@ -521,3 +521,65 @@ async def run_pipeline(symbol: str = "SPY"):
 
     result = await pipeline.ainvoke(initial_state)
     return result
+
+
+# ===================== NEW: PARALLEL EXECUTION MODE =====================
+
+async def run_hrm_parallel(symbol: str, market_data: dict, user_id: str, db) -> dict:
+    """Run HRM in parallel mode + human approval gate."""
+    
+    from app.agents.enhanced_agents import run_agents_parallel, require_human_approval
+    from app.agents.hrm_engine import hrm_engine
+    
+    # Step 1: System 2 detects regime
+    regime = hrm_engine.detect_regime(market_data)
+    
+    # Step 2: Run all 7 agents in PARALLEL
+    agent_results = await run_agents_parallel(market_data)
+    
+    # Step 3: Synthesize decision
+    decision = synthesize_decision(agent_results, regime)
+    
+    # Step 4: Human approval gate
+    approval = await require_human_approval(decision, user_id, db)
+    
+    return {
+        "symbol": symbol,
+        "regime": regime,
+        "decision": decision,
+        "agents": agent_results,
+        "requires_approval": approval.get("requires_manual_approval", False),
+        "approved": approval.get("approved", False),
+    }
+
+
+async def synthesize_decision(agent_results: dict, regime: str) -> dict:
+    """Combine all agent votes into final decision."""
+    
+    votes = []
+    confidences = []
+    
+    for agent_name, result in agent_results.items():
+        if isinstance(result, dict) and result.get("signal"):
+            votes.append(result["signal"])
+            confidences.append(result.get("confidence", 0.5))
+    
+    if not votes:
+        return {"action": "HOLD", "confidence": 0}
+    
+    buy_count = votes.count("bullish") + votes.count("buy")
+    sell_count = votes.count("bearish") + votes.count("sell")
+    
+    action = "BUY" if buy_count > sell_count else "SELL" if sell_count > buy_count else "HOLD"
+    confidence = sum(confidences) / len(confidences) if confidences else 0
+    
+    # Adjust by regime
+    regime_multiplier = {"BULL": 1.1, "BEAR": 0.9, "SIDEWAYS": 1.0, "CRISIS": 0.7}.get(regime, 1.0)
+    confidence *= regime_multiplier
+    
+    return {
+        "action": action,
+        "confidence": min(confidence, 1.0),
+        "regime": regime,
+        "votes": f"{buy_count}BUY/{sell_count}SELL"
+    }
