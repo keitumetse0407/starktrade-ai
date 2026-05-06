@@ -98,7 +98,6 @@ export default function PredictionsPage() {
     try {
       const res = await api('/predictions/trade', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           market_id: marketId,
           side: vote,

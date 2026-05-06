@@ -1,7 +1,7 @@
 # StarkTrade AI — Python Backend Dependencies
 # Core
 fastapi==0.115.6
-uvicorn[standard]==0.34.0
+uvicorn[standard]==0.33.0
 pydantic[email]==2.10.4
 pydantic-settings==2.7.1
 
@@ -20,8 +20,8 @@ redis[hiredis]==5.2.1
 celery[redis]==5.4.0
 
 # AI/ML (lightweight — no torch/transformers)
-langchain==0.3.14
-langchain-openai==0.3.0
+langchain==0.2.17
+langchain-openai==0.1.25
 langgraph==0.2.61
 openai==1.58.1
 

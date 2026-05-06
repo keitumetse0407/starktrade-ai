@@ -75,3 +75,12 @@ engine/models/*.pkl
 *.dat
 *.dir
 frontend/hermes_conversation_20260421_081538.json
+.agents/loop-state/
+
+# Backups (local only, not committed)
+backups/
+*.sql
+*.sql.gz
+
+# Infra secrets
+infra/nginx/ssl/

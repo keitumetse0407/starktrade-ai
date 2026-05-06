@@ -20,9 +20,9 @@ from .offline_regime_detector import (
     RegimeDetector, RegimeAnalysis, MarketRegime
 )
 
-from .offline_position_sizer import (
-    PositionSizer, PositionSize
-)
+##from .offline_position_sizer import (
+#    PositionSizer, PositionSize
+#)
 
 from .offline_orchestrator import OfflineOrchestrator
 
@@ -40,7 +40,7 @@ __all__ = [
     'RegimeDetector', 'RegimeAnalysis', 'MarketRegime',
     
     # Position Sizer
-    'PositionSizer', 'PositionSize',
+    #'PositionSizer', 'PositionSize',
     
     # Orchestrator
     'OfflineOrchestrator',

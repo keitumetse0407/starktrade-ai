@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { apiFetch } from '@/lib/api';
 
 interface BacktestResult {
   total_trades: number;
@@ -57,20 +58,16 @@ export default function BacktestPage() {
 
     try {
       // Call the offline backtester API
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'https://starktrade-ai.duckdns.org'}/api/v1/features/backtest`, 
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            symbol: selectedSymbol,
-            strategy: selectedStrategy,
-            start_date: startDate,
-            end_date: endDate,
-            initial_capital: initialCapital,
-          }),
-        }
-      );
+      const res = await apiFetch('/features/backtest', {
+        method: 'POST',
+        body: JSON.stringify({
+          symbol: selectedSymbol,
+          strategy: selectedStrategy,
+          start_date: startDate,
+          end_date: endDate,
+          initial_capital: initialCapital,
+        }),
+      });
 
       if (res.ok) {
         const data = await res.json();
