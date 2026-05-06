@@ -1,0 +1,16 @@
+[Unit]
+Description=StarkTrade AI Trading Engine (Go)
+After=network.target postgresql.service redis.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/starktrade-ai/trading-engine
+ExecStart=/root/starktrade-ai/trading-engine/starktrade-engine
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

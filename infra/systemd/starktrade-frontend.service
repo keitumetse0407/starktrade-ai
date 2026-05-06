@@ -1,0 +1,17 @@
+[Unit]
+Description=StarkTrade AI Frontend (Next.js)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/starktrade-ai/frontend
+Environment="NODE_ENV=production"
+ExecStart=/root/starktrade-ai/frontend/node_modules/.bin/next start -p 3000
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
