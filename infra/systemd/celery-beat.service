@@ -1,0 +1,15 @@
+[Unit]
+Description=StarkTrade Celery Beat Scheduler
+After=network.target redis-server.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/starktrade-ai/backend
+EnvironmentFile=/root/starktrade-ai/backend/.env
+ExecStart=/root/starktrade-ai/backend/venv/bin/celery -A app.services.celery_app beat --loglevel=info
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
